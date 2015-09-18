@@ -72,9 +72,15 @@ AC_ARG_ENABLE(grib2,
    ENABLE_GRIB2=$enableval,
    ENABLE_GRIB2=no)
 
+HAVE_PNG="yes"
 case "${OS}" in
   darwin*)
-      PNG_VERSION="15"
+      if [ -d "/usr/X11R6/include" ] then;
+        PNG_VERSION="15"
+      else
+        HAVE_PNG="no"
+        PNG_VERSION=""
+      fi
       ;;
         *)
       PNG_VERSION=""
@@ -97,22 +103,24 @@ if test "X$ENABLE_GRIB2" = "Xyes"; then
    else
      GRIB2LIB="-L"${with_grib2lib}
    fi
-   AC_ARG_WITH([pnglib],
-	[AS_HELP_STRING([--with-pnglib],[path where to look for libpng])],
-        [],
-	[with_pnglib=no])
-   if test ${with_pnglib} == "no" ; then
-     if test "${EXTERNALS+set}" = set; then 
-       PNGLIB="-L${EXTERNALS}/lib"
+   if test ${HAVE_PNG} == "yes"; then
+     AC_ARG_WITH([pnglib],
+      [AS_HELP_STRING([--with-pnglib],[path where to look for libpng])],
+          [],
+      [with_pnglib=no])
+     if test ${with_pnglib} == "no" ; then
+       if test "${EXTERNALS+set}" = set; then 
+         PNGLIB="-L${EXTERNALS}/lib"
+       else
+         PNGLIB="-L${prefix}/Externals/lib"
+       fi
      else
-       PNGLIB="-L${prefix}/Externals/lib"
+       PNGLIB="-L"${with_pnglib}
      fi
-   else
-     PNGLIB="-L"${with_pnglib}
-   fi
-   AC_CHECK_LIB([png${PNG_VERSION}],[png_error],[PNGLIBOK="yes"],[PNGLIBOK="no"],[${GRIB2LIB} ${PNGLIB}])
-   if test ${PNGLIBOK} == "no" ; then
-      AC_MSG_ERROR("[Could not find a working libpng${PNG_VERSION}]")
+     AC_CHECK_LIB([png${PNG_VERSION}],[png_error],[PNGLIBOK="yes"],[PNGLIBOK="no"],[${GRIB2LIB} ${PNGLIB}])
+     if test ${PNGLIBOK} == "no" ; then
+        AC_MSG_ERROR("[Could not find a working libpng${PNG_VERSION}]")
+     fi
    fi
    AC_ARG_WITH([jasperlib],
 	[AS_HELP_STRING([--with-jasperlib],[path where to look for libjasper])],
