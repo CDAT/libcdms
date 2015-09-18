@@ -4465,9 +4465,15 @@ else
 fi
 
 
+HAVE_PNG="yes"
 case "${OS}" in
   darwin*)
-      PNG_VERSION="15"
+      if test -z "/usr/X11R6/include";  then
+        PNG_VERSION="15"
+      else
+        HAVE_PNG="no"
+        PNG_VERSION=""
+      fi
       ;;
         *)
       PNG_VERSION=""
@@ -4486,7 +4492,7 @@ else
   with_grib2lib=no
 fi
 
-   if test ${with_grib2lib} == "no" ; then
+   if test ${with_grib2lib} = "no" ; then
      if test "${EXTERNALS+set}" = set; then
        GRIB2LIB="-L${EXTERNALS}/lib"
      else
@@ -4495,6 +4501,7 @@ fi
    else
      GRIB2LIB="-L"${with_grib2lib}
    fi
+   if test ${HAVE_PNG} = "yes"; then
 
 # Check whether --with-pnglib was given.
 if test "${with_pnglib+set}" = set; then :
@@ -4503,16 +4510,16 @@ else
   with_pnglib=no
 fi
 
-   if test ${with_pnglib} == "no" ; then
-     if test "${EXTERNALS+set}" = set; then
-       PNGLIB="-L${EXTERNALS}/lib"
+     if test ${with_pnglib} = "no" ; then
+       if test "${EXTERNALS+set}" = set; then
+         PNGLIB="-L${EXTERNALS}/lib"
+       else
+         PNGLIB="-L${prefix}/Externals/lib"
+       fi
      else
-       PNGLIB="-L${prefix}/Externals/lib"
+       PNGLIB="-L"${with_pnglib}
      fi
-   else
-     PNGLIB="-L"${with_pnglib}
-   fi
-   as_ac_Lib=`$as_echo "ac_cv_lib_png${PNG_VERSION}''_png_error" | $as_tr_sh`
+     as_ac_Lib=`$as_echo "ac_cv_lib_png${PNG_VERSION}''_png_error" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for png_error in -lpng${PNG_VERSION}" >&5
 $as_echo_n "checking for png_error in -lpng${PNG_VERSION}... " >&6; }
 if eval \${$as_ac_Lib+:} false; then :
@@ -4556,8 +4563,9 @@ else
   PNGLIBOK="no"
 fi
 
-   if test ${PNGLIBOK} == "no" ; then
-      as_fn_error $? "\"Could not find a working libpng${PNG_VERSION}\"" "$LINENO" 5
+     if test ${PNGLIBOK} = "no" ; then
+        as_fn_error $? "\"Could not find a working libpng${PNG_VERSION}\"" "$LINENO" 5
+     fi
    fi
 
 # Check whether --with-jasperlib was given.
@@ -4567,7 +4575,7 @@ else
   with_jasperlib=no
 fi
 
-   if test ${with_jasperlib} == "no" ; then
+   if test ${with_jasperlib} = "no" ; then
      if test "${EXTERNALS+set}" = set; then
        JASPERLIB="-L${EXTERNALS}/lib"
      else
@@ -4618,7 +4626,7 @@ else
   JASPERLIBOK="no"
 fi
 
-   if test ${JASPERLIBOK} == "no" ; then
+   if test ${JASPERLIBOK} = "no" ; then
       as_fn_error $? "\"Could not find a working libjasper\"" "$LINENO" 5
    fi
 
@@ -4629,7 +4637,7 @@ else
   with_grib2lib=no
 fi
 
-   if test ${with_grib2lib} == "no" ; then
+   if test ${with_grib2lib} = "no" ; then
      if test "${EXTERNALS+set}" = set; then
        GRIB2LIB="-L${EXTERNALS}/lib -lgrib2c "${PNGLIB}" -lpng${PNG_VERSION} "${JASPERLIB}" -ljasper -lm"
      else
@@ -4680,7 +4688,7 @@ else
   GRIB2LIBOK="no"
 fi
 
-   if test ${GRIB2LIBOK} == "no" ; then
+   if test ${GRIB2LIBOK} = "no" ; then
       as_fn_error $? "\"Could not find a working libgrib2c\"" "$LINENO" 5
    fi
 
@@ -5434,7 +5442,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -5480,7 +5488,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -5504,7 +5512,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -5549,7 +5557,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -5573,7 +5581,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
