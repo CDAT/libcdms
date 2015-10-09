@@ -1,10 +1,11 @@
-/*  Copyright (C) 1988-2010 by Brian Doty and the 
-    Institute of Global Environment and Society (IGES).  
+/*  Copyright (C) 1988-2013 by the Institute of Global Environment and Society (IGES).  
     See file COPYRIGHT for more information.   */
 
 #include <stdlib.h>
 
 /* Installation options for the GX package. */
+
+#define COLORMAX 2048
 
 /* HBUFSZ is the size of the metafile output buffer in
    number of short integers.  The metafile buffer should be as
@@ -15,7 +16,7 @@
 
 #define HBUFSZ 10000000L 
 #define BUFOPT 0
-#define pi 3.14159265358979
+#define pi M_PI
 
 /* Default directory containing the stroke and map data sets.
    User can override this default via setenv GADDIR */
@@ -158,7 +159,20 @@ struct gxcntr {
                                          -999 does double plot */
   gaint ccol;                  /* Contour color */
   char *label;                 /* Contour label */
+  gadouble val;                /* Contour value */
+  gaint shpflg;                /* flag for shapfiles */
 };
+
+/* Structure to be used to query the backend db settings. */
+
+struct gxdbquery {
+  gadouble wid;
+  gaint red,green,blue,alpha,tile;
+  gaint ptype,pxs,pys,pthick,pfcol,pbcol;
+  gaint fbold,fitalic;
+  char *fname;
+};
+
 
 /* Function prototypes for GX library routines  */
 
@@ -175,11 +189,9 @@ struct gxcntr {
    gxdsgl: Set single buffer mode
    gxddbl: Set doulbe buffer mode
    gxdswp: Swap buffers
-   gxqfil: Query availability of hardware polygon fill
    gxdfil: Hardware Polygon fill
    gxdxsz: Resize X Window (X only)
    gxdbtn: Get pointer pos at mouse btn press
-   gxgrey: Set grey scale
    gxdbck: Set hardware background/foreground
    gxrswd: Reset Widget Structures
    gxrs1wd: Reset one widget
@@ -192,12 +204,13 @@ struct gxcntr {
    gxmaskclear: Clear (unset) mask array
                                                            */
 
+void gxqdrgb (gaint, gaint *, gaint *, gaint *); /* query default color rgb values */
 void gxdbgn (gadouble, gadouble);
 void gxdbat (void);
 void gxdend (void);
 void gxdfrm (int);
 void gxdcol (int);
-gaint gxdacl (int, int, int, int);
+gaint gxdbacol (int, int, int, int, int);
 void gxdwid (int);
 void gxdmov (gadouble, gadouble);
 void gxddrw (gadouble, gadouble);
@@ -205,10 +218,8 @@ void gxdrec (gadouble, gadouble, gadouble, gadouble);
 void gxdsgl (void);
 void gxdbl (void);
 void gxdswp (void);
-gaint gxqfil (void);
 void gxdfil (gadouble *, gaint);
 void gxdxsz (int, int);
-void gxgrey (int);
 void gxdbck (int);
 gaint gxdbkq (void);
 void gxdeve (int);
@@ -218,6 +229,7 @@ void gxdrmu (int, struct gdmu *, int, int);
 void gxdsfn (void);
 void gxdcf (void);
 void gxdrdw (void);
+void gxdopt (gaint);
 void gxrdrw (int);
 void gxrswd (int);
 void gxrs1wd (int, int);
@@ -242,6 +254,7 @@ void gxdgeo (char *);
 int gxheps(char*);
 void gxdimg(gaint *, gaint, gaint, gaint, gaint);
 void gxdgcoord(gadouble, gadouble, gaint *, gaint *);
+void gxdboutbck (gaint);
 
 /* Routines in gxsubs:
    gxstrt: Initialize graphics output
@@ -249,8 +262,6 @@ void gxdgcoord(gadouble, gadouble, gaint *, gaint *);
    gxfrme: Start new frame
    gxcolr: Set color attribute
    gxacol: Assign new rgb to color number from 16-99
-   gxbckg: Set background color
-   gxqbck: Query background color
    gxwide: Set line width attribute
    gxmove: Move to X, Y
    gxdraw: Draw solid line to X, Y using current color and linewidth
@@ -282,16 +293,14 @@ void gxdgcoord(gadouble, gadouble, gaint *, gaint *);
    gxgsym: Get env var
    gxgnam: Get full path name
    gxptrn: Set fill pattern
-                                                                */
+   gxqchl: Query the width of a character 
+*/
 
 void gxstrt (gadouble, gadouble, int, int);
 void gxend (void);
 void gxfrme (int);
-void gxsfrm (void);
 void gxcolr (int);
-gaint gxacol (int, int, int, int);
-void gxbckg (int);
-gaint gxqbck (void);
+gaint gxacol (int, int, int, int, int);
 void gxwide (int);
 void gxmove (gadouble, gadouble);
 void gxdraw (gadouble, gadouble);
@@ -302,7 +311,9 @@ void gxclip (gadouble, gadouble, gadouble, gadouble);
 void gxtitl (char *, gadouble, gadouble, gadouble, gadouble, gadouble);
 void gxvpag (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble);
 void gxvcon (gadouble, gadouble, gadouble *, gadouble *);
+void gxvcon2 (gadouble, gadouble, gadouble *, gadouble *);
 void gxppvp (gadouble, gadouble, gadouble *, gadouble *);
+void gxppvp2 (gadouble, gadouble *);
 void gxscal (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gadouble);
 void gxproj ( void (*) (gadouble, gadouble, gadouble*, gadouble*) );
 void gxgrid ( void (*) (gadouble, gadouble, gadouble*, gadouble*) );
@@ -323,12 +334,16 @@ void bdterp (gadouble, gadouble, gadouble, gadouble, gadouble *, gadouble *);
 void gxptrn (int, int, int);
 char *gxgsym(char *);
 char *gxgnam(char *);
+gadouble gxdrawch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxqchl (char, gaint, gadouble);
+void gxsignal (gaint);
+
+
 
 /* Gxmeta routines handle graphics buffering and metafile output.
    Routines in gxmeta:
    gxhopt: Specify buffering option before open
    gxhnew: Buffering initialization on startup
-   gxhbgn: Enable hardcopy (metafile) output
    hout0:  Buffer 0 arg metafile command
    hout1:  Buffer one arg metafile command
    hout2:  Buffer two arg metafile command
@@ -337,30 +352,42 @@ char *gxgnam(char *);
    hout3i: Buffer three arg int metafile command
    hout4i: Buffer four arg int metafile command
    hfull:  Deal with full metafile memory buffer
-   gxhprt: Handle print command (output to metafile)
    gxhwri: Write buffer to metafile
-   gxhend: Close output metafile
    gxhfrm: Handle new frame action
    gxhdrw: Handle redraw operation
                                            */
 
 void gxhopt (int);
 void gxhnew (gadouble, gadouble, int);
-gaint gxhbgn (char *);
 void hout0 (int);
 void hout1 (int, int);
 void hout2 (int, gadouble, gadouble);
 void hout4 (int, gadouble, gadouble, gadouble, gadouble);
 void hout2i (int, int, int);
 void hout3i (int, int, int, int);
-void hout4i (int, int, int, int, int);
+void hout5i (int, int, int, int, int, int);
 void hfull (void);
-void gxhprt (char *);
 gaint gxhwri (void *, int);
-void gxhend (void);
 void gxhfrm (int);
-void gxhdrw (int);
+void gxhdrw (gaint,gaint);
 void gxddbl (void);
+gaint mbufget (void);
+void mbufrel (gaint);
+void gxmbuferr(void);
+void houtch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+void hout1c (gaint , gaint);
+void gxdbinit (void);
+void gxdbqfont (gaint, struct gxdbquery *);
+void gxdbqcol (gaint, struct gxdbquery *);
+void gxdbqwid (gaint, struct gxdbquery *);
+void gxdbsetwid (gaint, gadouble);
+gaint gxdbqhersh (void);
+void gxdbsethersh (gaint);
+void gxdbsetfn (gaint, char *);
+void gxdbsetpatt (gaint *, char *);
+void gxdbqpatt (gaint, struct gxdbquery *);
+void gxdbsettransclr (gaint);
+gaint gxdbqtransclr (void);
 
 /* Routines in gxchpl:
    gxchii: Initialize character plotting
@@ -399,7 +426,6 @@ int gxqclab (gadouble, gadouble, gadouble);
 gaint pathln (gadouble, gadouble, gadouble, gadouble);
 void gxcrel (void);
 void gxpclin (void);
-
 /* Routines in gxshad -- color filled contour routine:
 
    gxshad -- do color filled contours
@@ -418,11 +444,31 @@ gaint putxy  (gadouble, gadouble);
 void  shdcmp (void);
 gaint shdmax (void);
 
+/* Routines in gxshad2 -- color filled contours */
+
+void gxshad2 (gadouble *, gaint, gaint, gadouble *, gadouble, gaint *, gaint, char *);
+void s2flags (gadouble *, char *, gaint, gaint, gadouble, gadouble);
+void s2poly (gadouble *,  gaint, gaint, gadouble, gadouble);
+gaint s2follow (gadouble *, gaint, gaint, gadouble, gadouble, gaint, gaint, gaint);
+gaint s2col (gadouble, gaint, gaint);
+void s2ppnt(gadouble,gadouble);
+void s2debug ();
+void gxshad2b (gadouble *, gaint, gaint, gadouble *, gadouble, gaint *, gaint, char *);
+void s2box (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble);
+void s2pdrop (gadouble, gadouble, gaint, gaint);
+void s2outpoly(void);
+gaint s2pathln (gadouble, gadouble, gadouble, gadouble, gadouble);
+void s2frepbuf (void);
+gaint s2bufpoly (gaint);
+void s2setbuf (gaint);
+void s2setdraw (gaint);
+gaint s2polyvert (FILE *);
+
 /* routines in gxstrm:  gxstrm (do streamlines) */
 
 void gxstrm (gadouble *, gadouble *, gadouble *, gaint, gaint, char *, char *, char *,
-	     gaint, gadouble *, gaint *, gaint, gaint);
-void strmar (gadouble, gadouble, gadouble, gadouble);
+	     gaint, gadouble *, gaint *, gaint, gaint, gadouble, gadouble, gaint);
+void strmar (gadouble, gadouble, gadouble, gadouble, gadouble, gaint);
 gaint gxshdc (gadouble *, gaint *, gaint, gadouble);
 
 /* Routines in gxwmap:
@@ -437,6 +483,7 @@ gaint gxshdc (gadouble *, gaint *, gaint, gadouble);
    gxmpoly: Interpolate polygon sides for drawing in non-linear map space
                                                                   */
 
+void gxrsmapt(void);
 void gxdmap (struct mapopt *);
 void gxwmap (gadouble, gadouble, gadouble, gadouble);
 void gxnmap (gadouble, gadouble, gadouble, gadouble);
@@ -466,3 +513,35 @@ void gxlamcp (gadouble, gadouble, gadouble *, gadouble *);
 void gxlamcb (gadouble, gadouble, gadouble *, gadouble *);
 gadouble *gxmpoly(gadouble *xy, gaint cnt, gadouble llinc, gaint *newcnt); 
 void gree();
+
+
+/* routines in gxX.c */
+gadouble gxdch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdqchl (char, gaint, gadouble);
+void gxdopt(gaint);
+void gxinitimg (gaint, gaint);
+void gxendimg (char *);
+void gxdsignal (gaint);
+void gxsetpatt (gaint);
+void gxdXflush (void);
+void gxdclip (gadouble, gadouble, gadouble, gadouble);
+gaint gxdacol (gaint, gaint, gaint, gaint, gaint);
+
+/* routines in gxprint.c */
+void gxpbgn (gadouble, gadouble);
+void gxpinit (gadouble , gadouble);
+void gxpend (void);
+gaint gxprint (char *, gaint, gaint, gaint, gaint, char *, char *, gaint, gadouble);
+void gxpcol (gaint);
+void gxpacol (gaint);
+void gxpwid (gaint);
+void gxprec (gadouble, gadouble, gadouble, gadouble);
+void gxpbpoly (void);
+gaint gxpepoly (gadouble *, gaint);
+void gxpmov (gadouble, gadouble);
+void gxpdrw (gadouble, gadouble);
+void gxpflush (void);
+void gxpsignal (gaint);
+void gxpclip (gadouble, gadouble, gadouble, gadouble);
+gadouble gxpch (char, gaint , gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxpqchl (char, gaint , gadouble);

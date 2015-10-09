@@ -1,5 +1,4 @@
-/* Copyright (C) 1988-2010 by Brian Doty and the 
-   Institute of Global Environment and Society (IGES).  
+/* Copyright (C) 1988-2013 by the Institute of Global Environment and Society (IGES).  
    See file COPYRIGHT for more information.   */
 
 /* Authored by B. Doty */
@@ -11,9 +10,7 @@
 #include <malloc.h>
 #endif
 #else /* undef HAVE_CONFIG_H */
-#ifdef HAVE_MALLOC_H
 #include <malloc.h>
-#endif
 #endif /* HAVE_CONFIG_H */
 
 #include <stdio.h>
@@ -22,7 +19,6 @@
 #include <math.h>
 #include <ctype.h>
 #include "grads.h"
-#include <string.h>
 
 extern struct gamfcmn mfcmn;
 static char pout[256];
@@ -59,20 +55,19 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
   FILE *mfile;
   gafloat fdum;
   off_t levs,acum,acumvz,recacm;
-  gaint pdefop1=0, pdefop2=0;
+  gaint pdefop1=0,pdefop2=0,havesf,haveao;
   gaint acumstride=0, npairs, idum, reclen;
   gaint size=0,rc,len,swpflg,cnt,flag,tim1,tim2,ichar;
-  gaint flgs[8],e,t,i,j,ii,jj,err,hdrb,trlb,mflflg;
+  gaint flgs[8],e,t,i,j,ii,jj,err,hdrb,trlb,mflflg,cal365;
   gaint mcnt,maxlv,foundvar1,foundvar2;
   size_t sz;
   char rec[512], mrec[512], *ch, *pos, *sname, *vectorpairs, *pair, *vplist;
-  char pdefnm[256],var1[256],var2[256];
+  char pdefnm[256],var1[256],var2[256],ekwrd[6];
   char *varname,*attrname,*attrtype;
   unsigned char vermap, urec[8];
   static char *errs[9] = {"XDEF","YDEF","ZDEF","TDEF","UNDEF",
 			    "DSET","VARS","TITLE","DTYPE"};
 
- /*mf --- define here vice grads.c for cdunif.c mf*/
   mfcmn.fullyear=-999; 
 
   /* initialize variables */
@@ -88,7 +83,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
   vplist = NULL;
   varname = attrname = attrtype = NULL;
   attrib = NULL;
-  sname=NULL;
+  sname = NULL;
+  cal365 = 0;
 
   /* Try to open descriptor file */
   descr = fopen (name, "r");
@@ -191,6 +187,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       if ( (ch=nxtwrd(mrec))==NULL ) {
         gaprnt (1,"Descriptor File Warning: Missing attribute names in unpack record\n");
       } else {
+	havesf = 0; 
+	haveao = 0;
 	/* get the scale factor attribute name */
 	len = 0;
 	while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
@@ -198,12 +196,12 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	if ((pfi->scattr = (char *)galloc(sz,"scattr")) == NULL) goto err8;
 	for (i=0; i<len; i++) *(pfi->scattr+i) = *(ch+i);
 	*(pfi->scattr+len) = '\0';
-	/* set the packflg to 1, meaning only scale factor has been retrieved */
-	pfi->packflg = 1;
-	
+	havesf = 1;
+	if (!strncmp(pfi->scattr, "NULL", 4) || !strncmp(pfi->scattr, "null", 4)) havesf = 0;
+
 	/* get the offset attribute name */
 	if ( (ch=nxtwrd(ch)) == NULL ) {
-	  gaprnt (2,"Descriptor File Warning: No offset attribute name in unpack record\n");
+	  gaprnt (1,"Descriptor File Warning: No offset attribute name in unpack record\n");
 	} else {
 	  len = 0;
 	  while (*(ch+len)!=' ' && *(ch+len)!='\n' && *(ch+len)!='\t') len++;
@@ -211,11 +209,18 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	  if ((pfi->ofattr = (char *)galloc(sz,"ofattr")) == NULL) goto err8;
 	  for (i=0; i<len; i++) *(pfi->ofattr+i) = *(ch+i);
 	  *(pfi->ofattr+len) = '\0';
-	  /* Set the packflg to 2, meaning scale factor and offset have been retrieved */
-	  pfi->packflg = 2;
+	  haveao = 1;
+	  if (!strncmp(pfi->ofattr, "NULL", 4) || !strncmp(pfi->ofattr, "null", 4)) haveao = 0;
+	}
+
+	/* set the packflg */
+	if (havesf) {
+	  pfi->packflg = haveao == 1 ? 2 : 1 ;
+	} else {
+	  pfi->packflg = haveao == 1 ? 3 : 0 ;
 	}
       }
-      
+
     } else if (cmpwrd("format",rec) || cmpwrd("options",rec)) {
       if ( (ch=nxtwrd(rec))==NULL ) {
         gaprnt (1,"Description file warning: Missing options keyword\n");
@@ -231,7 +236,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 #endif
           else if (cmpwrd("365_day_calendar",ch)) {
 	    pfi->calendar=1;
-	    mfcmn.cal365=pfi->calendar;
+	    cal365=1;
 	  }
           else if (cmpwrd("big_endian",ch)) {
 	    if (!BYTEORDER) pfi->bswap = 1;
@@ -560,7 +565,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.yrxy[0]==-999 || pfi->bufrinfo->offset.yrxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.yrxy[0]==-999 || pfi->bufrinfo->offset.yrxy[1]==-999) 
+		goto err6a;
 	    }
 
 	  } else if (cmpwrd("mo",ch)) {
@@ -577,7 +583,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.moxy[0]==-999 || pfi->bufrinfo->offset.moxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.moxy[0]==-999 || pfi->bufrinfo->offset.moxy[1]==-999) 
+		goto err6a;
 	    }
 	  } else if (cmpwrd("dy",ch)) {
 	    if ((ch=nxtwrd(ch))==NULL) {
@@ -593,7 +600,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.dyxy[0]==-999 || pfi->bufrinfo->offset.dyxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.dyxy[0]==-999 || pfi->bufrinfo->offset.dyxy[1]==-999) 
+		goto err6a;
 	    }
 	  } else if (cmpwrd("hr",ch)) {
 	    if ((ch=nxtwrd(ch))==NULL) {
@@ -609,7 +617,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.hrxy[0]==-999 || pfi->bufrinfo->offset.hrxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.hrxy[0]==-999 || pfi->bufrinfo->offset.hrxy[1]==-999) 
+		goto err6a;
 	    }
 	  } else if (cmpwrd("mn",ch)) {
 	    if ((ch=nxtwrd(ch))==NULL) {
@@ -625,7 +634,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.mnxy[0]==-999 || pfi->bufrinfo->offset.mnxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.mnxy[0]==-999 || pfi->bufrinfo->offset.mnxy[1]==-999) 
+		goto err6a;
 	    }
 	  } else if (cmpwrd("sc",ch)) {
 	    if ((ch=nxtwrd(ch))==NULL) {
@@ -641,7 +651,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 		j++;
 		if (j>1) goto err6a;
 	      }
-	      if (pfi->bufrinfo->offset.scxy[0]==-999 || pfi->bufrinfo->offset.scxy[1]==-999) goto err6a;
+	      if (pfi->bufrinfo->offset.scxy[0]==-999 || pfi->bufrinfo->offset.scxy[1]==-999) 
+		goto err6a;
 	    }
 	  } else {
 	    goto err6a;
@@ -990,7 +1001,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       flgs[3] = 0;
 
     } else if (cmpwrd("edef",rec)) {
-      if ((ch = nxtwrd(rec)) == NULL) goto err1;
+      /* use mixed case version of record so ensemble names can have upper case letters */
+      if ((ch = nxtwrd(mrec)) == NULL) goto err1;
       if ((pos = intprs(ch,&(pfi->dnum[4])))==NULL) goto err1;
       if (pfi->dnum[4]<1) {
 	snprintf(pout,255,"Warning: Invalid EDEF syntax in %s -- Changing size of E axis from %d to 1 \n",
@@ -1024,36 +1036,43 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       pfi->ens1 = ens;
       j = 0;
       ch = nxtwrd(ch);
-      /* this is the pathway for keyword "names" followed by list of ensemble members */
-      if ((ch!=NULL) && cmpwrd("names",ch)) {
-	while (j<pfi->dnum[4]) {
-	  if ((ch=nxtwrd(ch))==NULL) {
-	    /* ensemble names are listed in more than one line */
-	    if (fgets(rec,256,descr)==NULL) goto err7a;  
-	    ch = rec;
-	    while (*ch==' ' || *ch=='\t') ch++;        /* advance through white space */
-	    if (*ch=='\0' || *ch=='\n') goto err7b;    /* nothing there */
+      if (ch!=NULL) {
+	/* this is the pathway for keyword "names" followed by list of ensemble members */
+	getwrd(ekwrd,ch,5);
+	lowcas(ekwrd);
+	if (cmpwrd("names",ekwrd)) {
+	  while (j<pfi->dnum[4]) {
+	    if ((ch=nxtwrd(ch))==NULL) {
+	      /* ensemble names are listed in more than one line */
+	      if (fgets(rec,512,descr)==NULL) goto err7a;  /* read line, keep as mixed case */
+	      ch = rec;
+	      while (*ch==' ' || *ch=='\t') ch++;          /* advance through white space */
+	      if (*ch=='\0' || *ch=='\n') goto err7b;      /* nothing there */
+	    }
+	    /* get the ensemble name */
+	    if ((getenm(ens, ch))!=0) goto err7d;
+	    /* initialize remaining fields in ensemble structure */
+	    for (jj=0;jj<4;jj++) ens->grbcode[jj]=-999;  
+	    ens->length=0;
+	    ens->gt=1;
+	    ens->tinit.yr=0;
+	    ens->tinit.mo=0;
+	    ens->tinit.dy=0;
+	    ens->tinit.hr=0;
+	    ens->tinit.mn=0;
+	    j++; ens++;
 	  }
-	  /* get the ensemble name */
-	  if ((getenm(ens, ch))!=0) goto err7d;
-	  /* initialize remaining fields in ensemble structure */
-	  for (jj=0;jj<4;jj++) ens->grbcode[jj]=-999;  
-	  ens->length=0;
-	  ens->gt=1;
-	  ens->tinit.yr=0;
-	  ens->tinit.mo=0;
-	  ens->tinit.dy=0;
-	  ens->tinit.hr=0;
-	  ens->tinit.mn=0;
-	  j++; ens++;
+	} else {
+	  gaprnt(1,"Invalid syntax in EDEF statement: \"names\" not found\n");
+	  goto err7f;
 	}
-      } 
+      }
       else {
 	/* this is the pathway for separate lines 
 	   containing name, length, initial time, and optional grib2 codes */
 	while (j<pfi->dnum[4]) {
 	  /* read the record and remove leading blanks */
-	  fgets(rec,512,descr); 
+	  fgets(rec,512,descr);       
 	  reclen = strlen(rec);
 	  jj = 0;
 	  while (jj<reclen && rec[0]==' ') {
@@ -1201,6 +1220,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
         pvar->isu = 0;
 	pvar->isdvar = 0;
 	pvar->nvardims = 0; 
+	pvar->nh5vardims = 0; 
+	pvar->g2aflg = 0;
 #if USEHDF5==1
 	pvar->h5varflg=-999;
 	pvar->dataspace=-999;
@@ -1256,8 +1277,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 
 	/* parse the levels fields */
         if ( (ch=nxtwrd(rec))==NULL) goto err6;
+	for (j=0;j<48;j++) pvar->units[j] = -999;
 	/* begin with 8th element of units aray for levels values */
-	for (j=0;j<16;j++) pvar->units[j] = -999;
         j = 8;          
         while (1) {
 	  if (j==8) {
@@ -1280,9 +1301,29 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
           if (j>15) goto err6;
         }
 
+	/* check if this is an extra block of "additional" grib2 codes  */
+	if (*ch=='a') {
+	  pvar->g2aflg = 1;
+	  /* parse the additional codes; begin with 16th element of pvar->units */
+	  j=16; 
+	  ch++;
+          while (1) {
+	    if ((ch=getdbl(ch,&(pvar->units[j])))==NULL) goto err6;  
+	    while (*ch==' ') ch++;
+	    if (*ch=='\0' || *ch=='\n') goto err6;
+	    if (*ch!=',') break;
+	    ch++;
+	    while (*ch==' ') ch++;
+	    if (*ch=='\0' || *ch=='\n') goto err6;
+	    j++;
+	    if (j>47) goto err6;	  
+	  }
+	}
+
 	/* parse the units fields; begin with 0th element for variable units */
         j = 0;
 	pvar->nvardims=0;
+	pvar->nh5vardims=0;
         while (1) {
           if (*ch=='x'||*ch=='y'||*ch=='z'||*ch=='t'||*ch=='e') { 
             if (*(ch+1)!=',' && *(ch+1)!=' ') goto err6;
@@ -1296,6 +1337,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
             if ( (ch=getdbl(ch,&(pvar->units[j])))==NULL ) goto err6;
 	    /* no negative array indices for ncflag files */
 	    if ((pfi->ncflg) && (pvar->units[j] < 0))  goto err6;   
+	    /* for hdf5, count the fixed array indices as varying dimensions */
+	    if ((pfi->ncflg==3) && (pvar->units[j] >= 0)) pvar->nh5vardims++;
           }
           while (*ch==' ') ch++;
           if (*ch=='\0' || *ch=='\n') goto err6;
@@ -1306,10 +1349,11 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
           j++;
           if (j>8) goto err6;
         }
+	/* for hdf5, add the letters and numbers to get true number of varying dimensions */
+	pvar->nh5vardims += pvar->nvardims;  
 
 	/* parse the variable description */
-        getstr (pvar->varnm,mrec+(ch-rec),127);
-
+        getstr (pvar->varnm,mrec+(ch-rec),140);
 
 	/* var_t is for data files with dimension sequence: X, Y, Z, T, V */
 	if ((pvar->units[0]==-1) && 
@@ -1319,10 +1363,9 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	/* non-float data types */
 	if ((pvar->units[0]==-1) && 
 	    (pvar->units[1]==40)) {
-
 	  if (pvar->units[2]== 1) pvar->dfrm = 1;
 	  if (pvar->units[2]== 2) { pvar->dfrm = 2;
-	  if (pvar->units[3]==-1) pvar->dfrm = -2; }
+	    if (pvar->units[3]==-1) pvar->dfrm = -2; }
 	  if (pvar->units[2]== 4) pvar->dfrm = 4;
 	}
 
@@ -1413,15 +1456,14 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 
   /* Set the default netcdf/hdf5 cache size to be big enough to contain 
      a global 2D grid of 8-byte data values times the global cache scale factor */
-  //if (pfi->cachesize == (long)-1) {
-  //  sf = sf();
-  //  sf = sf * 8 * pfi->dnum[0] * pfi->dnum[1];
-  //  pfi->cachesize = (long)floor(sf) ;
-  //}
+  if (pfi->cachesize == (long)-1) {
+    sf = qcachesf();
+    sf = sf * 8 * pfi->dnum[0] * pfi->dnum[1];
+    pfi->cachesize = (long)floor(sf) ;
+  }
   /* set the netCDF-4 cache size */
-  //sz = (size_t)pfi->cachesize;
-  //set_nc_cache(sz);
-  
+  sz = (size_t)pfi->cachesize;
+  set_nc_cache(sz);
 
   /* If no EDEF entry was found, set up the default values */
   if (pfi->ens1==NULL) {
@@ -1491,134 +1533,107 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
     mfile = fopen (pfi->mnam, "rb");
     if (mfile==NULL) {
       snprintf(pout,255,"Open Error:  Can't open Station/Index map file %s \n",pfi->mnam);
-      gaprnt (0,pout);
-      goto retrn;
+      gaprnt (0,pout); goto retrn;
     }
     if (mflag==2) goto skipread;
     
     mflflg = 1;
     swpflg = 0; 
       
-    /* GRIB (version 1 or 2) gridded data */
+    /* GRIB1 or GRIB2 gridded data */
     if (pfi->type!=2) {
-      /* GRIB version 1 */
+
+      /* * * GRIB1 * * */
       if (pfi->idxflg==1) {    
-	/* allocate memory for index data */
+
+	/* allocate memory for index structure */
 	sz = sizeof(struct gaindx);
-	if ((pindx = (struct gaindx *)galloc(sz,"pindx"))==NULL) 
-	  goto err8;
-	pfi->pindx = pindx;
-	/*  check the gribmap version number */
+	if ((pindx = (struct gaindx *)galloc(sz,"pindx"))==NULL) goto err8;
+
+	/* get the gribmap version number */
 	fseek(mfile,1,0);
 	rc = fread(&vermap,sizeof(unsigned char),1,mfile);
 	if (rc!=1) { 
-	  gaprnt(0,"Error reading version number from GRIB1 index file\n"); 
-	  goto retrn; 
+	  gaprnt(0,"Error reading version number from GRIB1 index file\n"); goto retrn; 
 	}
 
-	/* gribmap version 2 or 3 */
+	/* gribmap version 2 or 3 -- these versions are deprecated, but we still support reading them */
 	if ((vermap == 2) || (vermap == 3)) {        
+	  pindx->type = vermap; 
 
-	  /* read the header */
+	  /* read the array sizes from header */
 	  fseek(mfile,2,0);
 	  rc = fread(urec,sizeof(unsigned char),4,mfile);
-	  if (rc!=4) { 
-	    gaprnt(0,"Error reading hinum from GRIB1 index file\n"); 
-	    goto retrn; 
-	  }
+	  if (rc!=4) { gaprnt(0,"Error reading hinum from GRIB1 index file\n"); goto retrn; }
 	  pindx->hinum=gagby(urec,0,4);
-	  
+
 	  rc = fread(urec,sizeof(unsigned char),4,mfile);
-	  if (rc!=4) { 
-	    gaprnt(0,"Error reading hfnum from GRIB1 index file\n"); 
-	    goto retrn; 
-	  }
+	  if (rc!=4) { gaprnt(0,"Error reading hfnum from GRIB1 index file\n"); goto retrn; }
 	  pindx->hfnum=gagby(urec,0,4);
 	  
 	  rc = fread(urec,sizeof(unsigned char),4,mfile);
-	  if (rc!=4) { 
-	    gaprnt(0,"Error reading intnum from GRIB1 index file\n"); 
-	    goto retrn; 
-	  }
+	  if (rc!=4) { gaprnt(0,"Error reading intnum from GRIB1 index file\n"); goto retrn; }
 	  pindx->intnum=gagby(urec,0,4);
 	  
 	  rc = fread(urec,sizeof(unsigned char),4,mfile);
-	  if (rc!=4) { 
-	    gaprnt(0,"Error reading fltnum from GRIB1 index file\n"); 
-	    goto retrn; 
-	  }
+	  if (rc!=4) { gaprnt(0,"Error reading fltnum from GRIB1 index file\n"); goto retrn; }
 	  pindx->fltnum=gagby(urec,0,4);
 	  
 	  if (vermap == 2) {
-	    /* skip the begining time struct info */
-	    /* this not written out in version 3 maps */
+	    /* skip the begining time struct info; this not written out in version 3 maps */
 	    rc = fread(urec,sizeof(unsigned char),7,mfile);
-	    if (rc!=7) { 
-	      gaprnt(0,"Error reading time data from GRIB1 index file\n"); 
-	      goto retrn; 
-	    }
+	    if (rc!=7) { gaprnt(0,"Error reading time data from GRIB1 index file\n"); goto retrn; }
 	  }
 
-	  /* read the index data */
+	  /* now read the arrays of index data */
 	  pindx->hipnt  = NULL;
 	  pindx->hfpnt  = NULL;
 	  pindx->intpnt = NULL;
 	  pindx->fltpnt = NULL;
-	  if (pindx->hinum>0) {
-	    sz = sizeof(gaint)*pindx->hinum;
-	    if ((pindx->hipnt = (gaint*)galloc(sz,"hipnt"))==NULL) 
-	      goto err8;
+	  /* header integers */
+	  if (pindx->hinum>0) {  
+	    if ((pindx->hipnt = (gaint*)galloc(pindx->hinum*sizeof(gaint),"hipnt"))==NULL) goto err8;
 	    for (i=0; i<pindx->hinum; i++) {
 	      rc = fread(urec,sizeof(unsigned char),4,mfile);
 	      if (rc!=4) { 
 		snprintf(pout,255,"Error reading integer %d from header of GRIB1 index file\n",i); 
-		gaprnt(0,pout); 
-		goto retrn; 
+		gaprnt(0,pout); goto retrn; 
 	      }
 	      idum = gagby(urec,0,4);
 	      if (gagbb(urec,0,1)) idum = -idum;
 	      *(pindx->hipnt+i) = idum;
 	    }
 	  }
-
+	  /* header floats -- these are not used, hfnum is always zero */
 	  if (pindx->hfnum>0) {
-	    sz = sizeof(gafloat)*pindx->hfnum;
-	    if ((pindx->hfpnt = (gafloat*)galloc(sz,"hfpnt"))==NULL) 
-	      goto err8; 
-	    rc = fread (pindx->hfpnt,sizeof(gafloat),pindx->hfnum,mfile);
+	    if ((pindx->hfpnt = (gafloat*)galloc(pindx->hfnum*sizeof(gafloat),"hfpnt"))==NULL) goto err8; 
+	    rc = fread(pindx->hfpnt,sizeof(gafloat),pindx->hfnum,mfile);
 	    if (rc!=pindx->hfnum) { 
-	      gaprnt(0,"Error reading floats from header of GRIB1 index file\n"); 
-	      goto retrn; 
+	      gaprnt(0,"Error reading floats from header of GRIB1 index file\n"); goto retrn; 
 	    }
 	  }
-
+	  /* index data: integer */
 	  if (pindx->intnum>0) {
-	    sz = sizeof(gaint)*pindx->intnum;
-	    if ((pindx->intpnt = (gaint*)galloc(sz,"intpnt"))==NULL) 
-	      goto err8; 
+	    if ((pindx->intpnt = (gaint*)galloc(pindx->intnum*sizeof(gaint),"intpnt"))==NULL) goto err8; 
 	    for (i=0; i<pindx->intnum; i++) {
 	      rc = fread(urec,sizeof(unsigned char),4,mfile);
 	      if (rc!=4) { 
 		snprintf(pout,255,"Error reading integer %d from GRIB1 index file\n",i); 
-		gaprnt(0,pout); 
-		goto retrn; 
+		gaprnt(0,pout); goto retrn; 
 	      }
 	      idum = gagby(urec,0,4);
 	      if (gagbb(urec,0,1)) idum = -gagbb(urec,1,31);
 	      *(pindx->intpnt+i) = idum;
 	    }
 	  }
-
+	  /* index data: float */
 	  if (pindx->fltnum>0) {
-	    sz = sizeof(gafloat)*pindx->fltnum;
-	    if ((pindx->fltpnt = (gafloat *)galloc(sz,"fltpnt"))==NULL) 
-	      goto err8; 
+	    if ((pindx->fltpnt = (gafloat *)galloc(pindx->fltnum*sizeof(gafloat),"fltpnt"))==NULL) goto err8; 
 	    for (i=0; i<pindx->fltnum; i++) {
 	      rc = fread(urec,sizeof(unsigned char),4,mfile);
 	      if (rc!=4) { 
 		snprintf(pout,255,"Error reading float %d from GRIB1 index file\n",i); 
-		gaprnt(0,pout); 
-		goto retrn; 
+		gaprnt(0,pout); goto retrn; 
 	      }
 	      fdum = ibm2flt(urec);
 	      *(pindx->fltpnt+i) = fdum;
@@ -1626,138 +1641,144 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	  }
 	} 
 	else {     
-	  /* other gribmap versions */
+	  /* gribmap versions 1 or 4 or 5 */
 	  fseek (mfile,0L,0);
 	  rc = fread (pindx,sizeof(struct gaindx),1,mfile);
-          if (rc!=1) {
-	    gaprnt(0,"Error reading header from GRIB1 index file\n");
-	    goto retrn;
-          }
+          if (rc!=1) { gaprnt(0,"Error reading header from GRIB1 index file\n"); goto retrn; }
 	  if (pindx->type>>24 > 0) swpflg=1;
-	  if (swpflg) gabswp((gafloat *)pindx,5);
-	  pindx->hipnt = NULL;
-	  pindx->hfpnt = NULL;
+	  if (swpflg) gabswp((gafloat *)pindx,5); /* swap the 5 integers in the gaindx structure */
+	  pindx->hipnt  = NULL;
+	  pindx->hfpnt  = NULL;
 	  pindx->intpnt = NULL;
 	  pindx->fltpnt = NULL;
-          if (pindx->type != 1 && pindx->type != 4 ) {
+	  /* check the version number */
+          if (pindx->type != 1 && pindx->type != 4 && pindx->type != 5) {
             snprintf(pout,100,"Invalid version number %i in GRIB index file\n",pindx->type); 
-            gaprnt(0,pout); 
-            goto retrn; 
+            gaprnt(0,pout); goto retrn; 
           }
+	  /* header integers */
 	  if (pindx->hinum>0) {
-	    sz = sizeof(gaint)*pindx->hinum;
-	    if ((pindx->hipnt = (gaint *)galloc(sz,"hipnt2")) == NULL) 
-	      goto err8; 
+	    if ((pindx->hipnt = (gaint *)galloc(sizeof(gaint)*pindx->hinum,"hipnt2"))==NULL) goto err8; 
 	    rc = fread (pindx->hipnt,sizeof(gaint),pindx->hinum,mfile);
-            if (rc!=pindx->hinum) {
-	      gaprnt(0,"Error reading header ints from GRIB1 index file\n");
-	      goto retrn;
-            }
+            if (rc!=pindx->hinum) { gaprnt(0,"Error reading header ints from GRIB1 index file\n"); goto retrn; }
 	    if (swpflg) gabswp((gafloat *)(pindx->hipnt),pindx->hinum);
 	  }
+	  /* header floats --  these are not used, hfnum is always zero */
 	  if (pindx->hfnum>0) {
-	    sz = sizeof(gafloat)*pindx->hfnum;
-	    if ((pindx->hfpnt = (gafloat *)galloc(sz,"hfpnt2")) == NULL)
-	      goto err8; 
+	    if ((pindx->hfpnt = (gafloat *)galloc(sizeof(gafloat)*pindx->hfnum,"hfpnt2"))==NULL) goto err8; 
 	    rc = fread (pindx->hfpnt,sizeof(gafloat),pindx->hfnum,mfile);
-            if (rc!=pindx->hfnum) {
-	      gaprnt(0,"Error reading header floats from GRIB1 index file\n");
-	      goto retrn;
-            }
+            if (rc!=pindx->hfnum) { gaprnt(0,"Error reading header floats from GRIB1 index file\n"); goto retrn; } 
 	    if (swpflg) gabswp(pindx->hfpnt,pindx->hfnum);
 	  }
+	  /* index data: integer */
 	  if (pindx->intnum>0) {
-	    sz = sizeof(gaint)*pindx->intnum;
-	    if ((pindx->intpnt = (gaint *)galloc(sz,"ipnt2")) == NULL) 
-	      goto err8; 
+	    if ((pindx->intpnt = (gaint *)galloc(sizeof(gaint)*pindx->intnum,"ipnt2"))==NULL) goto err8; 
 	    rc = fread (pindx->intpnt,sizeof(gaint),pindx->intnum,mfile);
-            if (rc!=pindx->intnum) {
-	      gaprnt(0,"Error reading int array from GRIB1 index file\n");
-	      goto retrn;
-            }
+            if (rc!=pindx->intnum) { gaprnt(0,"Error reading int array from GRIB1 index file\n"); goto retrn; }
 	    if (swpflg) gabswp((gafloat *)(pindx->intpnt),pindx->intnum);
 	  }
+	  /* index data: float */
 	  if (pindx->fltnum>0) {
-	    sz = sizeof(gafloat)*pindx->fltnum;
-	    if ((pindx->fltpnt = (gafloat *)galloc(sz,"fpnt2")) == NULL)
-	      goto err8; 
+	    if ((pindx->fltpnt = (gafloat *)galloc(sizeof(gafloat)*pindx->fltnum,"fpnt2"))==NULL) goto err8; 
 	    rc = fread (pindx->fltpnt,sizeof(gafloat),pindx->fltnum,mfile);
-            if (rc!=pindx->fltnum) {
-	      gaprnt(0,"Error reading float array from GRIB1 index file\n");
-	      goto retrn;
-            }
+            if (rc!=pindx->fltnum) { gaprnt(0,"Error reading float array from GRIB1 index file\n"); goto retrn; }
 	    if (swpflg) gabswp(pindx->fltpnt,pindx->fltnum);
 	  }
-          if (pindx->type == 4) {
+	  /* index data: off_t */
+	  if ((pindx->type==4) ||                      /* version=4 --> off_t in use */
+	      (pindx->type==5 && pindx->hipnt+4>0)) {  /* version=5 & bignum>0 --> off_t in use */
             if (sizeof(off_t)!=8) goto err8a;
-	    sz = sizeof(struct gaindxb);
-	    if ((pindxb = (struct gaindxb *)galloc(sz,"pindxb"))==NULL) goto err8;
-	    pfi->pindxb = pindxb;
+	    if ((pindxb = (struct gaindxb *)galloc(sizeof(struct gaindxb),"pindxb"))==NULL) goto err8;
             pindxb->bignum = *(pindx->hipnt + 4); 
             pindxb->bigpnt = NULL;
-	    if (pindxb->bignum>0) {
-	      sz = sizeof(off_t)*pindxb->bignum;
-	      if ((pindxb->bigpnt = (off_t *)galloc(sz,"offpnt")) == NULL) goto err8; 
-	      rc = fread (pindxb->bigpnt,sizeof(off_t),pindxb->bignum,mfile);
-              if (rc!=pindxb->bignum) {
-	        gaprnt(0,"Error reading off_t array from GRIB1 index file\n");
-	        goto retrn;
-              }
-	      if (swpflg) gabswp8(pindxb->bigpnt,pindxb->bignum);
-	    }
+	    if ((pindxb->bigpnt = (off_t *)galloc(sizeof(off_t)*pindxb->bignum,"offpnt"))==NULL) goto err8; 
+	    rc = fread (pindxb->bigpnt,sizeof(off_t),pindxb->bignum,mfile);
+	    if (rc!=pindxb->bignum) { gaprnt(0,"Error reading off_t array from GRIB1 index file\n"); goto retrn; }
+	    if (swpflg) gabswp8(pindxb->bigpnt,pindxb->bignum);
+	    /* everything parsed OK, so hang the pindxb off the gafile structure */
+	    pfi->pindxb = pindxb;
           }
 	}
+	/* everything parsed OK, so hang the pindx off the gafile structure */
+	pfi->pindx = pindx;
       }
 #if GRIB2
-      /* GRIB Version 2 */
+      /* * * GRIB2 * * */
       else if (pfi->idxflg==2) {   	 
 	/* allocate memory for the grib2 index data */
-	sz = sizeof(struct gag2indx);
-	if ((g2indx = (struct gag2indx *)galloc(sz,"g2indx")) == NULL) 
-	  goto err8;
-	pfi->g2indx = g2indx;
-        g2indx->g2intpnt = NULL;
+	if ((g2indx = (struct gag2indx *)galloc(sizeof(struct gag2indx),"g2indx"))==NULL) goto err8;
+        g2indx->bigflg = 0;
+	g2indx->g2intpnt = NULL;
         g2indx->g2bigpnt = NULL;
 	/* get the grib2map version number */
 	fseek(mfile,0L,SEEK_SET);
 	rc = fread(&g2indx->version,sizeof(gaint),1,mfile);
 	if (rc!=1) {
-	  gaprnt(0,"Error reading version number from GRIB2 index file\n");
-	  goto retrn;
+	  gaprnt(0,"Error reading version number from GRIB2 index file\n"); goto retrn;
 	}
 	/* check if we need to byte swap */
 	if (g2indx->version>>24 > 0) swpflg=1;
 	else swpflg=0;
 	if (swpflg) gabswp(&g2indx->version,1);
+        if (g2indx->version==3 ) {
+          /* read the extra header fields in most recent version */
+	  rc = fread(&g2indx->bigflg,sizeof(gaint),1,mfile);
+	  if (rc!=1) {
+	    gaprnt(0,"Error reading bigflg from GRIB2 index file\n"); goto retrn;
+	  }
+	  if (swpflg) gabswp(&g2indx->bigflg,1);
+	  rc = fread(&g2indx->trecs,sizeof(gaint),1,mfile);
+	  if (rc!=1) {
+	    gaprnt(0,"Error reading trecs from GRIB2 index file\n"); goto retrn;
+	  }
+	  if (swpflg) gabswp(&g2indx->trecs,1);
+	  rc = fread(&g2indx->tsz,sizeof(gaint),1,mfile);
+	  if (rc!=1) {
+	    gaprnt(0,"Error reading tsz from GRIB2 index file\n"); goto retrn;
+	  }
+	  if (swpflg) gabswp(&g2indx->tsz,1);
+	  rc = fread(&g2indx->esz,sizeof(gaint),1,mfile);
+	  if (rc!=1) {
+	    gaprnt(0,"Error reading esz from GRIB2 index file\n"); goto retrn;
+	  }
+	  if (swpflg) gabswp(&g2indx->esz,1);
+	}
+	else {
+	  /* We can't know the trecs, tsz, and esz values for older versions of the map,
+	     but we can set bigflg  */
+	  if (g2indx->version==2) 
+	    g2indx->bigflg = 1;
+	  else 
+	    g2indx->bigflg = 0;
+	}
+
 	/* get the index values */
-	if (g2indx->version == 1 || g2indx->version == 2) {     
-          if (g2indx->version == 2 && sizeof(off_t)!=8) goto err8a;
+	if (g2indx->version==1 || g2indx->version==2 || g2indx->version==3) {     
+          if (g2indx->bigflg && sizeof(off_t)!=8) goto err8a;
+	  /* g2intnum is the size of the array of index values */
 	  rc = fread(&g2indx->g2intnum,sizeof(gaint),1,mfile);
 	  if (rc!=1) {
-	    gaprnt(0,"Error reading index values from GRIB2 index file\n");
-	    goto retrn;
-	  } 
+	    gaprnt(0,"Error reading g2intnum from GRIB2 index file\n"); goto retrn;
+	  }
 	  if (swpflg) gabswp(&g2indx->g2intnum,1);
 	  if (g2indx->g2intnum>0) {
+	    /* read the integer index data */
 	    sz = sizeof(gaint)*g2indx->g2intnum;
-	    if ((g2indx->g2intpnt = (gaint *)galloc(sz,"g2intpnt")) == NULL) 
-	      goto err8;
+	    if ((g2indx->g2intpnt = (gaint *)galloc(sz,"g2intpnt"))==NULL) goto err8;
 	    rc = fread(g2indx->g2intpnt,sizeof(gaint),g2indx->g2intnum,mfile);
 	    if (rc!=g2indx->g2intnum) {
-	      snprintf(pout,255,"Error reading GRIB2 index file, rc=%d\n",rc);
-	      gaprnt(0,pout);
-	      goto retrn;
+	      snprintf(pout,255,"Error reading int array from GRIB2 index file, rc=%d\n",rc);
+	      gaprnt(0,pout); goto retrn;
 	    }
 	    if (swpflg) gabswp(g2indx->g2intpnt,g2indx->g2intnum);
-            if (g2indx->version == 2) {
+	    /* read the off_t index data */
+            if (g2indx->bigflg) {
 	      sz = sizeof(off_t)*g2indx->g2intnum;
-	      if ((g2indx->g2bigpnt = (off_t *)galloc(sz,"g2bigpnt")) == NULL) 
-	        goto err8;
+	      if ((g2indx->g2bigpnt = (off_t *)galloc(sz,"g2bigpnt"))==NULL) goto err8;
 	      rc = fread(g2indx->g2bigpnt,sizeof(off_t),g2indx->g2intnum,mfile);
 	      if (rc!=g2indx->g2intnum) {
-	        snprintf(pout,255,"Error reading GRIB2 index file, rc=%d\n",rc);
-	        gaprnt(0,pout);
-	        goto retrn;
+	        snprintf(pout,255,"Error reading off_t array from GRIB2 index file, rc=%d\n",rc);
+	        gaprnt(0,pout); goto retrn;
 	      }
 	      if (swpflg) gabswp8(g2indx->g2bigpnt,g2indx->g2intnum);
             }
@@ -1765,9 +1786,10 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	}
 	else {     
 	  snprintf(pout,255,"Unknown GRIB2 index version number: %d\n",g2indx->version);
-	  gaprnt(0,pout);
-	  goto retrn;
+	  gaprnt(0,pout); goto retrn;
 	}
+	/* everything parsed OK, so hang the pindx off the gafile structure */
+	pfi->g2indx = g2indx;
       }
 #endif
     }  /* end of GRIB index handling */
@@ -1776,10 +1798,10 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
       /* stnmap file processing */
       fread(rec,1,16,mfile);  /* minimum map file is 16 bytes */
       vermap=1;
-      if (strncmp(rec,"GrADS_stnmapV002",16) == 0) {
+      if (strncmp(rec,"GrADS_stnmapV002",16)==0) {
 	vermap=2;
       }
-      if (vermap == 2) {
+      if (vermap==2) {
 	fread(urec,sizeof(unsigned char),4,mfile);
 	idum=gagby(urec,0,4);
 	if (gagbb(urec,0,1)) idum=-idum;
@@ -1789,8 +1811,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	if (gagbb(urec,0,1)) idum=-idum;
 	maxlv=idum;
 	sz = sizeof(gaint)*mcnt;
-	if ((pfi->tstrt = (gaint *)galloc(sz,"tstrt")) == NULL) goto err8;
-	if ((pfi->tcnt  = (gaint *)galloc(sz,"tcnt")) == NULL) goto err8;
+	if ((pfi->tstrt = (gaint *)galloc(sz,"tstrt"))==NULL) goto err8;
+	if ((pfi->tcnt  = (gaint *)galloc(sz,"tcnt"))==NULL) goto err8;
 	for(i=0;i<mcnt;i++) {
 	  fread(urec,sizeof(unsigned char),4,mfile);
 	  idum=gagby(urec,0,4);
@@ -1815,8 +1837,8 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	  gabswp((gafloat *)(&maxlv),1);
 	}
 	sz = sizeof(gaint)*mcnt;
-	if ((pfi->tstrt = (gaint *)galloc(sz,"tstrt1")) == NULL) goto err8;
-	if ((pfi->tcnt  = (gaint *)galloc(sz,"tcnt1")) == NULL) goto err8;
+	if ((pfi->tstrt = (gaint *)galloc(sz,"tstrt1"))==NULL) goto err8;
+	if ((pfi->tcnt  = (gaint *)galloc(sz,"tcnt1"))==NULL) goto err8;
 	fread (pfi->tstrt,sizeof(gaint),mcnt,mfile);
 	fread (pfi->tcnt,sizeof(gaint),mcnt,mfile);
 	if (swpflg) {
@@ -1855,7 +1877,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
   if (vectorpairs) {
     vplist = vectorpairs; 
     sz = strlen(vplist)+1;
-    if ((pair = (char *)galloc(sz,"pair")) == NULL) {
+    if ((pair = (char *)galloc(sz,"pair"))==NULL) {
       gaprnt(0,"memory allocation error for list of vector pairs\n");
       goto err8;
     } 
@@ -1904,7 +1926,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 	  i++; 
 	}
 	/* move pointer forward one word */
-	if ((vplist = nxtwrd (vplist)) == NULL) break;
+	if ((vplist = nxtwrd (vplist))==NULL) break;
       }
     }
     gree(pair,"f174");
@@ -1915,7 +1937,7 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
   pvar=pfi->pvar1;
   for (j=1; j<=pfi->vnum; j++) {
     /* for GRIB2 data sets */
-    if (pfi->idxflg == 2) {
+    if (pfi->idxflg==2) {
       /* Look for a variable with units[0-2] == 0,2,2 or 0,2,3  that hasn't been handled yet */
       if ((pvar->vecpair<0) && 
 	  ((pvar->units[0]==0 && 
@@ -2158,9 +2180,9 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
    we do this here to set the calandar for templating */
 
   if (mfcmn.cal365<0) {
-    mfcmn.cal365=pfi->calendar;
+    mfcmn.cal365 = cal365;
   } else {
-    if (pfi->calendar != mfcmn.cal365) {
+    if (cal365 != mfcmn.cal365) {
       gaprnt(0,"Attempt to change the global calendar...\n");
       if (mfcmn.cal365) {
 	gaprnt(0,"The calendar is NOW 365 DAYS and you attempted to open a standard calendar file\n");
@@ -2324,7 +2346,6 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
     pfi->fnumc = 0;
     pfi->fnume = 0;
   }
-
   fclose (descr);
   if (pdfi) fclose(pdfi);
 
@@ -2410,6 +2431,10 @@ gaint gaddes (char *name, struct gafile *pfi, gaint mflag) {
 
  err7e:
   gaprnt (0,"Open Error:  Invalid ensemble record\n");
+  goto err9;
+
+ err7f:
+  gaprnt (0,"Open Error:  Invalid ensemble keyword\n");
   goto err9;
 
  err8:
@@ -2501,7 +2526,7 @@ size_t sz;
   vvs++;
   for (i=0; i<pfi->dnum[dim]; i++) {
     if ( (ch = nxtwrd(ch))==NULL) {
-      if (fgets(rec,256,descr)==NULL) goto err2;
+      if (fgets(rec,512,descr)==NULL) goto err2;
       ch = rec;
       while (*ch==' ' || *ch=='\t') ch++;
       if (*ch=='\0' || *ch=='\n') goto err3;
@@ -2905,11 +2930,13 @@ gaint i;
     if (pindx->intpnt) gree(pindx->intpnt,"f72");
     if (pindx->fltpnt) gree(pindx->fltpnt,"f73");
     gree(pindx,"f74");
+    pfi->pindx = NULL;
   }
   if (pfi->pindxb) {
     pindxb = pfi->pindxb;
     if (pindxb->bigpnt)  gree(pindxb->bigpnt,"b98");
     gree(pindxb,"b99");
+    pfi->pindxb = NULL;
   }
 #if GRIB2
   if (pfi->g2indx) {
@@ -2917,6 +2944,7 @@ gaint i;
     if (g2indx->g2intpnt) gree(g2indx->g2intpnt,"f75");
     if (g2indx->g2bigpnt) gree(g2indx->g2bigpnt,"b75");
     gree(g2indx,"f76");
+    pfi->g2indx = NULL;
   }
 #endif
   if (pfi->fnums)  gree(pfi->fnums,"f77");
@@ -3168,7 +3196,7 @@ size_t sz;
        three constants at each lat-lon grid point: offset 
        of the ij gridpoint, and the delta x and delta y values. */
     
-    pi = acos(-1.0);
+    pi = M_PI;
     ioff = pfi->ppi[0];
     dx = (gadouble*)pfi->ppf[0];
     dy = (gadouble*)pfi->ppf[1];
@@ -3302,7 +3330,7 @@ C   LANGUAGE: SUN FORTRAN 1.4
 C   MACHINE:  SUN SPARCSTATION 1+
 C*/
 
-static gadouble d2r = 3.14159/180.0;
+static gadouble d2r = M_PI/180.0;
 static gadouble earthr = 6371.2;
 
 gadouble re,xlat,wlong,r;
@@ -3389,7 +3417,7 @@ c
   gadouble alnfix,alon,x,y,windrot;
   gadouble latref,lonref,iref,jref,stdlt1,stdlt2,stdlon,delx,dely;
 
-  pi = 4.0*atan(1.0);
+  pi = M_PI;
   pi2 = pi/2.0;
   pi4 = pi/4.0;
   d2r = pi/180.0;
@@ -3489,14 +3517,13 @@ c            grdj:   j-coordinate(s) that this routine will generate
 c                    information for
 */
 
-  gadouble pi,d2r,r2d, earthr;
+  gadouble d2r,r2d, earthr;
   gadouble tlm0d,tph0d,dlam,dphi;
   gadouble phi,lam,lam0,phi0;
   gadouble x,y,z,xx,bigphi,biglam;
   gadouble dlmd,dphd,wbd,sbd;
 
-  pi = 3.141592654;
-  d2r = pi/180.0;
+  d2r = M_PI/180.0;
   r2d = 1.0/d2r;
   earthr = 6371.2;
 
@@ -3546,7 +3573,7 @@ void ll2pse (gaint im, gaint jm, gadouble *vals, gadouble lon, gadouble lat,
 
   const gadouble rearth = 6378.273e3;
   const gadouble eccen2 = 0.006693883;
-  const gadouble pi = 3.141592654;
+  const gadouble pi = M_PI;
 
   gadouble cdr, alat, along, e, e2;
   gadouble t, x, y, rho, sl, tc, mc;
@@ -3786,7 +3813,7 @@ c     constants and functions
 void ll2rotll( gadouble *vals, gadouble grdlat, gadouble grdlon,
 		        gadouble *grdi, gadouble *grdj,  gadouble *wrot ) {
 
-  const gadouble pi = 4.0*atan( 1.0 );
+  const gadouble pi = M_PI;
   gadouble lon_pole;      /* longitude of the pole in radiants */
   gadouble lat_pole;      /* latitude of the pole in radiants */
   gadouble dlon;          /* longitude increment in radiants */

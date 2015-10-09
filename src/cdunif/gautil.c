@@ -1,5 +1,4 @@
-/*  Copyright (C) 1988-2010 by Brian Doty and the
-    Institute of Global Environment and Society (IGES).
+/*  Copyright (C) 1988-2013 by the Institute of Global Environment and Society (IGES).  
     See file COPYRIGHT for more information.   */
 
 /* Originally authored by B. Doty */
@@ -9,7 +8,7 @@
 #include <math.h>
 #include <limits.h>
 #include <string.h>
-/*
+/* 
  * Include ./configure's header file
  */
 #ifdef HAVE_CONFIG_H
@@ -39,9 +38,7 @@
 #include "readline/history.h"
 #endif
 
-#ifdef HAVE_MALLOC_H
 #include <malloc.h>
-#endif
 
 #endif /* HAVE_CONFIG_H */
 
@@ -52,6 +49,8 @@ struct gamfcmn mfcmn;
 
 static char pout[256];   /* Build Error msgs here */
 
+char *gatxtl(char *str, gaint color);
+
 /* Retrieves the next command from the user.  Leading blanks
    are stripped.  The number of characters entered before the
    CR is returned.                                                    */
@@ -59,7 +58,7 @@ static char pout[256];   /* Build Error msgs here */
 gaint nxtcmd (char *cmd, char *prompt) {
 gaint past,cnt;
 
-  printf ("%s ",prompt);
+  printf ("%s ",gatxtl(prompt,-1));
   past = 0;
   cnt = 0;
   while (1) {
@@ -84,7 +83,8 @@ gaint past,cnt;
 gaint nxrdln (char *cmd, char *prompt) {
 char *ch, *ch2;
 
-  if ((ch=readline(prompt)) == NULL) {
+  ch=readline(gatxtl(prompt,-1));
+  if ( ch== NULL) {
     return(-1);
   } else {
     ch2 = ch;
@@ -286,7 +286,7 @@ gadouble v;
     return;
 
   /* Do conversion if increment is in months.  Same as for minutes,
-     except special handling is required for partial months.
+     except special handling is required for partial months.   
      JMA There is a bug here, and some precision decisions that need attention */
 
   } else {
@@ -486,9 +486,9 @@ char monam[5];
     if (*ch>='0' && *ch<='9') {
       /* use fullyear only if year 1 = 0001*/
       if(*(ch+2)>='0' && *(ch+2)<='9') {
-	mfcmn.fullyear=1;
+	mfcmn.fullyear=1;   /* 4-digit year */
       } else {
-	mfcmn.fullyear=0;
+	mfcmn.fullyear=0;   /* 2-digit year */
       }
       ch = intprs (ch,&val);
     } else {
@@ -800,9 +800,9 @@ char * pos;
    returned is the radius, and the dimension number returned
    is 10. This is only valid for stn type files.
 
-   wflag is set to
-   0 if the dimension expression was grid coordinates;
-   1 if it was world coordinates;
+   wflag is set to 
+   0 if the dimension expression was grid coordinates; 
+   1 if it was world coordinates; 
    2 if forecast time offsets are used
                                                                 */
 
@@ -814,11 +814,10 @@ gadouble (*conv) (gadouble *, gadouble);
 gadouble *cvals,v;
 /* gadouble g1,g2; */
 gaint i,op,len,enum1;
-char *pos, *frst;
-char name[5],ename[16];
-
+char *pos;
+char name[15],ename[20];
+  
   /* parse the dimension name */
-  frst = ch;
   i = 0;
   while (*ch>='a' && *ch<='z' && i<6) {
     name[i] = *ch;
@@ -826,7 +825,7 @@ char name[5],ename[16];
   }
   name[i] = '\0';
   if (i>4) {
-    gaprnt (0,"Syntax Error:  Invalid dimension expression\n");
+    gaprnt (0,"Syntax Error:  Invalid dimension expression \n");
     snprintf(pout,255,"  Expecting x/y/z/t/offt/e/lon/lat/lev/time/ens, found %s\n",name);
     gaprnt (0,pout);
     return (NULL);
@@ -857,7 +856,7 @@ char name[5],ename[16];
 	return (NULL);
       }
     }
-  }
+  } 
   /* dimension is ENS */
   else if (cmpwrd("ens",name)) {
     /* parse the ensemble name */
@@ -865,7 +864,7 @@ char name[5],ename[16];
     len=0;
     while (len<16 && *pos!=')' ) {
       ename[len] = *pos;
-      len++;
+      len++; 
       pos++;
     }
     ename[len] = '\0';
@@ -907,8 +906,8 @@ char name[5],ename[16];
   }
 
   /* dimension expression is given in grid coordinates: x, y, z, t, offt, or e */
-  *wflag = 0;
-  if (*dim < 5) {
+  *wflag = 0;          
+  if (*dim < 5) {  
     if (cmpwrd("offt",name)) *wflag=2;     /* trip the time offset flag */
     if (op==0) {
       *d = v + pfi->dimoff[*dim];          /* straight override of fixed dimension value */
@@ -924,10 +923,10 @@ char name[5],ename[16];
       }
       /* get current dimension value in grid coordinates from gastat structure */
       if (*dim == 3) {
-        *d = t2gr(pfi->abvals[3],&(pst->tmin));
-      }
+        *d = t2gr(pfi->abvals[3],&(pst->tmin));  
+      } 
       else {
-        if (pfi->type==1 || pfi->type==4) {
+        if (pfi->type==1 || pfi->type==4) { 
           conv = pfi->ab2gr[*dim];
           cvals = pfi->abvals[*dim];
           *d = conv(cvals,pst->dmin[*dim]);
@@ -940,11 +939,11 @@ char name[5],ename[16];
       if (op==2) *d = *d - v;
       return (ch);
     }
-  }
+  } 
   /* dimension expression is given in world coordinates: lon, lat, lev, time, or ens */
-  else {
+  else {                        
     *dim = *dim - 5;
-    *wflag = 1;
+    *wflag = 1;          
 /*     if (cmpwrd("offtime",name)) { */
 /*       /\* determine the size of the time offset in grid units *\/ */
 /*       g1 = t2gr(pfi->abvals[3],&(pst->tmin)); */
@@ -967,12 +966,12 @@ char name[5],ename[16];
 	gaprnt (0,"Syntax Error:  Invalid dimension expression\n");
 	gaprnt (0,"  Cannot use an offset value with an ensemble name\n");
 	return (NULL);
-      }
+      } 
       /* combine offset with current dimension value from gastat structure */
       if (*dim==3) {
         if (op==1) timadd (&(pst->tmin),&dtim);
         if (op==2) timsub (&(pst->tmin),&dtim);
-      }
+      } 
       else {
         if (op==1) v = pst->dmin[*dim] + v;
         if (op==2) v = pst->dmin[*dim] - v;
@@ -997,7 +996,7 @@ char name[5],ename[16];
       /* straight override of ensemble grid coordinate */
       *d = enum1 + 1 + pfi->dimoff[*dim];
       return (ch);
-    }
+    } 
     /* get the grid coordinate for the new (combined) dimension value */
     else if (*dim == 3) {
       *d = t2gr(pfi->abvals[3],&dtim);
@@ -1113,12 +1112,14 @@ char *rmask;
   pgr->rmin=  9.99E35;
   pgr->rmax= -9.99E35;
   r     = pgr->grid;
-  rmask = pgr->umask;
+  rmask = pgr->umask; 
   cnt=0;
   for (i=0;i<size;i++) {
     if (*rmask == 1) {
       cnt++;
-      if (pgr->rmin>*r) pgr->rmin = *r;
+      if (pgr->rmin>*r) {
+	pgr->rmin = *r;
+      }
       if (pgr->rmax<*r) pgr->rmax = *r;
     }
     r++; rmask++;
@@ -1243,20 +1244,20 @@ static gadouble m32lts[32] = {-20.453, -18.01, -15.763, -13.738,
 
 /* From Mike Timlin */
 static gadouble gltst62[94] = {
-        -88.542, -86.6531, -84.7532, -82.8508, -80.9473, -79.0435,
-        -77.1394, -75.2351, -73.3307, -71.4262, -69.5217, -67.6171,
-        -65.7125, -63.8079, -61.9033, -59.9986, -58.0939, -56.1893,
-        -54.2846, -52.3799, -50.4752, -48.5705, -46.6658, -44.7611,
-        -42.8564, -40.9517, -39.047, -37.1422, -35.2375, -33.3328,
-        -31.4281, -29.5234, -27.6186, -25.7139, -23.8092, -21.9044,
-        -19.9997, -18.095, -16.1902, -14.2855, -12.3808, -10.47604,
-        -8.57131, -6.66657, -4.76184, -2.8571, -0.952368, 0.952368,
-        2.8571, 4.76184, 6.66657, 8.57131, 10.47604, 12.3808, 14.2855,
-        16.1902, 18.095, 19.9997, 21.9044, 23.8092, 25.7139, 27.6186,
-        29.5234, 31.4281, 33.3328, 35.2375, 37.1422, 39.047, 40.9517,
-        42.8564, 44.7611, 46.6658, 48.5705, 50.4752, 52.3799, 54.2846,
-        56.1893, 58.0939, 59.9986, 61.9033, 63.8079, 65.7125, 67.6171,
-        69.5217, 71.4262, 73.3307, 75.2351, 77.1394, 79.0435, 80.9473,
+        -88.542, -86.6531, -84.7532, -82.8508, -80.9473, -79.0435, 
+        -77.1394, -75.2351, -73.3307, -71.4262, -69.5217, -67.6171, 
+        -65.7125, -63.8079, -61.9033, -59.9986, -58.0939, -56.1893, 
+        -54.2846, -52.3799, -50.4752, -48.5705, -46.6658, -44.7611, 
+        -42.8564, -40.9517, -39.047, -37.1422, -35.2375, -33.3328, 
+        -31.4281, -29.5234, -27.6186, -25.7139, -23.8092, -21.9044, 
+        -19.9997, -18.095, -16.1902, -14.2855, -12.3808, -10.47604, 
+        -8.57131, -6.66657, -4.76184, -2.8571, -0.952368, 0.952368, 
+        2.8571, 4.76184, 6.66657, 8.57131, 10.47604, 12.3808, 14.2855, 
+        16.1902, 18.095, 19.9997, 21.9044, 23.8092, 25.7139, 27.6186, 
+        29.5234, 31.4281, 33.3328, 35.2375, 37.1422, 39.047, 40.9517, 
+        42.8564, 44.7611, 46.6658, 48.5705, 50.4752, 52.3799, 54.2846, 
+        56.1893, 58.0939, 59.9986, 61.9033, 63.8079, 65.7125, 67.6171, 
+        69.5217, 71.4262, 73.3307, 75.2351, 77.1394, 79.0435, 80.9473, 
         82.8508, 84.7532, 86.6531, 88.542 };
 
 /* Given the starting point and the length, return the MOM32 lats */
@@ -1389,7 +1390,7 @@ size_t sz;
 }
 
 /* Given the starting point and the length, return the gaussian lats
-  for T62 grids */
+  for T62 grids */ 
 /* From Mike Timlin */
 
 gadouble *gagst62 (gaint istrt, gaint num) {
@@ -1485,7 +1486,7 @@ void gagfre (struct gagrid *pgr) {
     if (pgr->ivals != NULL) gree(pgr->ivals,"f88");
     if (pgr->jvals != NULL) gree(pgr->jvals,"f89");
   }
-  if (pgr->idim>-1 && (pgr->isiz*pgr->jsiz)>1) {
+  if (pgr->idim>-1) {
     gree(pgr->grid,"f90");
     gree(pgr->umask,"f91");
   }
@@ -1495,7 +1496,9 @@ void gagfre (struct gagrid *pgr) {
 void gasfre (struct gastn *stn) {
 gaint i;
   if (stn==NULL) return;
-  if (stn->tvals) gree(stn->tvals,"f237");
+  if (stn->tvals) {
+    gree(stn->tvals,"f237");
+  }
   if (stn->rpt) {
     for (i=0; i<BLKNUM; i++) {
       if (stn->blks[i] != NULL) gree(stn->blks[i],"f238");
@@ -1557,12 +1560,12 @@ gaint i,j;
 
 /* Given a file name template and a dt structure, fill in to get the file name */
 
-char *gafndt (char *fn, struct dt *dtim, struct dt *dtimi, gadouble *vals,
+char *gafndt (char *fn, struct dt *dtim, struct dt *dtimi, gadouble *vals, 
 	      struct gachsub *pch1st, struct gaens *ens1st, gaint t, gaint e, gaint *flag) {
 struct gachsub *pchsub;
 struct gaens *ens;
 struct dt stim;
-gaint len,olen,iv,tdif,i,tused,eused,mo,doy;
+gaint len,olen,iv,tdif,i,tused,eused,mo,doy,dys,hrs,mns;
 char *fnout, *in, *out, *work, *in2, *out2;
 size_t sz;
 
@@ -1583,7 +1586,7 @@ size_t sz;
     /* handle template strings for initial time */
     if (*in=='%' && *(in+1)=='i') {
       tused=1;
-      if (*(in+2)=='x' && *(in+3)=='1') {
+      if (*(in+2)=='x' && *(in+3)=='1') { 
         snprintf(out,sz,"%i",dtimi->yr/10);
         while (*out) out++;
         in+=4;
@@ -1652,14 +1655,14 @@ size_t sz;
         *out = *in;
         in++; out++;
       }
-    }
+    } 
     /* handle template strings for any time */
     else if (*in=='%' && *(in+1)=='x' && *(in+2)=='1') {   /* decade */
       tused=1;
       snprintf(out,sz,"%i",dtim->yr/10);
       while (*out) out++;
       in+=3;
-    } else if (*in=='%' && *(in+1)=='x' && *(in+2)=='3') {
+    } else if (*in=='%' && *(in+1)=='x' && *(in+2)=='3') { 
       tused=1;
       snprintf(out,sz,"%03i",dtim->yr/10);
       out+=3; in+=3;
@@ -1735,7 +1738,9 @@ size_t sz;
       }
       snprintf(out,sz,"%03i",doy);
       out+=3;  in+=3;
-    } else if (*in=='%' && *(in+1)=='t' && *(in+2)=='1') {   /* time index t, starting with 1 */
+    } 
+    /* time index t, starting with 1 */
+    else if (*in=='%' && *(in+1)=='t' && *(in+2)=='1') {   
       tused=1;
       snprintf(out,sz,"%i",t);
       while (*out) out++;
@@ -1760,7 +1765,9 @@ size_t sz;
       tused=1;
       snprintf(out,sz,"%06i",t);
       out+=6;  in+=3;
-    } else if (*in=='%' && *(in+1)=='t' && *(in+2)=='m' && *(in+3)=='1') {   /* time index t, starting with 0 */
+    } 
+    /* time index t, starting with 0 */
+    else if (*in=='%' && *(in+1)=='t' && *(in+2)=='m' && *(in+3)=='1') {   
       tused=1;
       snprintf(out,sz,"%i",t-1);
       while (*out) out++;
@@ -1786,7 +1793,7 @@ size_t sz;
       snprintf(out,sz,"%06i",t-1);
       out+=6;  in+=4;
     }
-    /* forecast times */
+    /* forecast hour */
     else if (*in=='%' && *(in+1)=='f' && *(in+2)=='2') {
       tused=1;
       stim.yr = (gaint)(*vals+0.1);
@@ -1795,7 +1802,8 @@ size_t sz;
       stim.hr = (gaint)(*(vals+3)+0.1);
       stim.mn = (gaint)(*(vals+4)+0.1);
       tdif = timdif(dtimi,dtim);
-      tdif = (tdif+30)/60;
+      /* tdif = (tdif+30)/60; */
+      tdif = tdif/60;   /* forecast hour not rounded up anymore */
       if (tdif<99) snprintf(out,sz,"%02i",tdif);
       else snprintf(out,sz,"%i",tdif);
       while (*out) out++;
@@ -1807,13 +1815,61 @@ size_t sz;
       stim.dy = (gaint)(*(vals+2)+0.1);
       stim.hr = (gaint)(*(vals+3)+0.1);
       stim.mn = (gaint)(*(vals+4)+0.1);
-      tdif = timdif(dtimi,dtim);
-      tdif = (tdif+30)/60;
+      tdif = timdif(dtimi,dtim); 
+      /* tdif = (tdif+30)/60; */
+      tdif = tdif/60;   /* forecast hour not rounded up anymore */
       if (tdif<999) snprintf(out,sz,"%03i",tdif);
       else snprintf(out,sz,"%i",tdif);
       while (*out) out++;
       in+=3;
-    }
+    } 
+    /* forecast minute */
+    else if (*in=='%' && *(in+1)=='f' && *(in+2)=='n' && *(in+3)=='2') {
+      tused=1;
+      stim.yr = (gaint)(*vals+0.1);
+      stim.mo = (gaint)(*(vals+1)+0.1);
+      stim.dy = (gaint)(*(vals+2)+0.1);
+      stim.hr = (gaint)(*(vals+3)+0.1);
+      stim.mn = (gaint)(*(vals+4)+0.1);
+      tdif = timdif(dtimi,dtim); 
+      if (tdif<99) snprintf(out,sz,"%02i",tdif);
+      else snprintf(out,sz,"%i",tdif);
+      while (*out) out++;
+      in+=4;
+    } 
+    /* forecast time in hours/minutes (hhnn) */ 
+    else if (*in=='%' && *(in+1)=='f' && *(in+2)=='h' && *(in+3)=='n') {
+      tused=1;
+      stim.yr = (gaint)(*vals+0.1);
+      stim.mo = (gaint)(*(vals+1)+0.1);
+      stim.dy = (gaint)(*(vals+2)+0.1);
+      stim.hr = (gaint)(*(vals+3)+0.1);
+      stim.mn = (gaint)(*(vals+4)+0.1);
+      tdif = timdif(dtimi,dtim); 
+      hrs = tdif/60;
+      mns = tdif - (hrs*60);
+      if (hrs<99) snprintf(out,sz,"%02i%02i",hrs,mns);
+      else snprintf(out,sz,"%i%02i",hrs,mns);
+      while (*out) out++;
+      in+=4;
+    } 
+    /* forecast time in days/hours/minutes (ddhhnn) */ 
+    else if (*in=='%' && *(in+1)=='f' && *(in+2)=='d' && *(in+3)=='h' && *(in+4)=='n') {
+      tused=1;
+      stim.yr = (gaint)(*vals+0.1);
+      stim.mo = (gaint)(*(vals+1)+0.1);
+      stim.dy = (gaint)(*(vals+2)+0.1);
+      stim.hr = (gaint)(*(vals+3)+0.1);
+      stim.mn = (gaint)(*(vals+4)+0.1);
+      tdif = timdif(dtimi,dtim); 
+      dys = tdif/1440;
+      hrs = (tdif - (dys*1440))/60;
+      mns = tdif - (dys*1440) - (hrs*60);
+      if (dys<99) snprintf(out,sz,"%02i%02i%02i",dys,hrs,mns);
+      else snprintf(out,sz,"%i%02i%02i",dys,hrs,mns);
+      while (*out) out++;
+      in+=5;
+    } 
     /* string substitution */
     else if (*in=='%' && *(in+1)=='c' && *(in+2)=='h') {
       tused=1;
@@ -1827,13 +1883,13 @@ size_t sz;
             gree(fnout,"f240");
             return (NULL);
           }
-          in2 = fnout;
+          in2 = fnout; 
 	  out2 = work;
           while (in2!=out) {
             *out2 = *in2;
             in2++; out2++;
           }
-          gree(fnout,"f241");
+          gree(fnout,"f241");     
           fnout = work;
           out = out2;
           getwrd(out,pchsub->ch,len);
@@ -1843,7 +1899,7 @@ size_t sz;
         pchsub = pchsub->forw;
       }
       in+=3;
-    }
+    } 
     /* ensemble name substitution */
     else if  (*in=='%' && *(in+1)=='e') {
       eused=1;
@@ -1888,17 +1944,34 @@ size_t sz;
   *out = '\0';
   if (eused==1 && tused==1) {
     *flag = 3;                       /* templating on E and T */
-  }
+  } 
   else if (eused==1 && tused==0) {
     *flag = 2;                       /* templating only on E */
   }
-  else if (eused==0 && tused==1) {
+  else if (eused==0 && tused==1) { 
     *flag = 1;                       /* templating only on T */
   }
   else {
     *flag = 0;                       /* no templating */
   }
   return (fnout);
+}
+
+/* Byte swap requested number of 2 byte elements */
+
+void gabswp2 (void *r, gaint cnt) {
+gaint i;
+char *ch1,*ch2,cc1,cc2;
+
+  ch1 = (char *)r;
+  ch2 = ch1+1;
+  for (i=0; i<cnt; i++) {
+    cc1 = *ch1;
+    cc2 = *ch2;
+    *ch1 = cc2;
+    *ch2 = cc1;
+    ch1+=2; ch2+=2;
+  }
 }
 
 /* Byte swap requested number of 4 byte elements */
@@ -1985,7 +2058,7 @@ gadouble value, exp;
  mant = (ibm[1] << 16) + (ibm[2] << 8) + ibm[3];
  power = (gaint) (ibm[0] & 0x7f) - 64;
  abspower = power > 0 ? power : -power;
-
+ 
  exp = 16.0;
  value = 1.0;
  while (abspower) {
@@ -1995,7 +2068,7 @@ gadouble value, exp;
    exp = exp * exp;
    abspower >>= 1;
  }
-
+ 
  if (power < 0) value = 1.0 / value;
  value = value * mant / 16777216.0;
  if (positive == 0) value = -value;
@@ -2018,16 +2091,16 @@ gadouble mant;
    ibm[0] = ibm[1] = ibm[2] = ibm[3] = 0;
    return 0;
  }
-
+ 
  /* sign bit */
  if (x < 0.0) {
    sign = 128;
    x = -x;
  }
  else sign = 0;
-
+ 
  mant = frexp((gadouble) x, &exp);
-
+ 
  if (mant >= 1.0) {
    mant = 0.5;
    exp++;
@@ -2036,9 +2109,9 @@ gadouble mant;
    mant *= 0.5;
    exp++;
  }
-
+ 
  exp = exp/4 + 64;
-
+ 
  if (exp < 0) {
    fprintf(stderr,"underflow in flt2ibm\n");
    ibm[0] = ibm[1] = ibm[2] = ibm[3] = 0;
@@ -2050,23 +2123,23 @@ gadouble mant;
    ibm[1] = ibm[2] = ibm[3] = 255;
    return -1;
  }
-
+ 
  /* normal number */
-
+ 
  ibm[0] = sign | exp;
-
+ 
  mant = mant * 256.0;
  i = floor(mant);
  mant = mant - i;
  ibm[1] = i;
-
+ 
  mant = mant * 256.0;
  i = floor(mant);
  mant = mant - i;
  ibm[2] = i;
-
+ 
  ibm[3] = floor(mant*256.0);
-
+ 
  return 0;
 }
 
@@ -2086,7 +2159,7 @@ gaint exp;
 
  if (ieee[0] == 0 && ieee[1] == 0 && ieee[2] == 0 && ieee[3] == 0)
    return (gafloat) 0.0;
-
+ 
  exp = ((ieee[0] & 127) << 1) + (ieee[1] >> 7);
  fmant = (gadouble) ((gaint) ieee[3] + (gaint) (ieee[2] << 8) +
 		     (gaint) ((ieee[1] | 128) << 16));
@@ -2100,7 +2173,7 @@ gaint exp;
 
  if (ieee[0] == 0 && ieee[1] == 0 && ieee[2] == 0 && ieee[3] == 0)
    return (gadouble) 0.0;
-
+ 
  exp = ((ieee[0] & 127) << 1) + (ieee[1] >> 7);
  fmant = (gadouble) ((gaint) ieee[3] + (gaint) (ieee[2] << 8) +
 		     (gaint) ((ieee[1] | 128) << 16));
@@ -2162,20 +2235,20 @@ gadouble mant;
  return 0;
 }
 
-/* Copies indicated scaling info into newly allocated
+/* Copies indicated scaling info into newly allocated 
    gadouble array.  args:
-
+ 
    vals -- input scaling array
    lin  -- input is linear or levels
    dir  -- direction of scaling info:
-              0 for gr to ab
+              0 for gr to ab 
               1 for ab to gr
    dim  -- dimension the scaling info is for
 
    lin, dir, and dim are provided solely to figure out how
    many values are to be copied.  This assumes knowledge
    of how the various scaling items are set up.  */
-
+   
 
 gadouble *cpscal (gadouble *vals, gaint lin, gaint dir, gaint dim) {
 gaint i,num;
@@ -2230,22 +2303,22 @@ gaint ib,i,j,k,len,flag;
       flag = 1;
       break;
     }
-    len++ ; i++;
+    len++ ; i++; 
   }
 
   if (flag) {
     for (j=ib; j<i; j++) {
       k = j-ib;
-      pvar->longnm[k] = *(mrec+j);
+      pvar->longnm[k] = *(mrec+j); 
       /* substitute ~ for spaces in longname */
-      if (pvar->longnm[k]=='~') pvar->longnm[k]=' ';
+      if (pvar->longnm[k]=='~') pvar->longnm[k]=' '; 
     }
     pvar->longnm[len] = '\0';
     i+=2;
   } else {
     i = 0;
     pvar->longnm[0] = '\0';
-  }
+  } 
 
   if (*(mrec+i)=='\n' || *(mrec+i)=='\0') return (1);
 
@@ -2265,7 +2338,6 @@ gaint i;
   i = 0;
   if (*(mrec+i)=='\n' || *(mrec+i)=='\0') return (1);
   getwrd (ens->name, mrec+i, 15);
-  lowcas(ens->name);
   return(0);
 
 }

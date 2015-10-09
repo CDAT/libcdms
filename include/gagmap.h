@@ -1,5 +1,4 @@
-/*  Copyright (C) 1988-2010 by Brian Doty and the 
-    Institute of Global Environment and Society (IGES).  
+/*  Copyright (C) 1988-2013 by the Institute of Global Environment and Society (IGES).  
     See file COPYRIGHT for more information.   */
 
 #ifndef DRIVER_GAGMAP
@@ -10,6 +9,7 @@
 
 WHERE FILE *gfile;
 WHERE FILE *mfile;
+WHERE FILE *exmfile;
 
 /* Following structures hold all the unpacked header info from a grib record. */
 
@@ -72,6 +72,8 @@ WHERE gaint scaneof;        /* option to ignore failure to find data at end of f
 WHERE gaint scanEOF;        /* option to ignore failure to find data at end of file */
 WHERE gaint scanlim;        /* the default # of max bytes between records */
 WHERE gaint notau;          /* force time to be base time */
+WHERE gaint upgrade;        /* create newer version of existing index file */
+WHERE gaint downgrade;      /* create older version of existing index file */
 WHERE gaint tauflg;         /* search for a fixed tau in filling the 4-D volume */
 WHERE gaint tauoff;         /* the fixed tau in h */
 WHERE gaint tau0;           /* set the base dtg for tau search */
@@ -113,14 +115,17 @@ extern void gribpr (struct grhdr *);
 /* function prototypes */
 gaint wtgmap(void) ;
 void  putint(gaint, unsigned char *,gaint *) ;
+gaint wtg1map(struct gafile *, struct gaindx *, struct gaindxb *);
 #if GRIB2
 void  g2fill (gaint, gaint, gaint, off_t, g2int, struct gag2indx *);
 gaint wtg2map (struct gafile *, struct gag2indx *);
 gaint g2grid_check (gribfield *, struct gafile *pfi, gaint r, gaint f);
 gaint g2time_check (gribfield *, g2int *, struct gafile *, gaint, gaint, gaint, gaint);
-gaint g2var_match (gribfield *, struct gafile *, gaint);
+gaint g2var_match (gribfield *, struct gafile *, gaint, gaint);
+gaint g2a_check (gribfield *, struct gavar *);
 gaint g2ens_match (gribfield *, struct gafile *);
 gaint g2ens_check (struct gaens *, gribfield *);
-void g2prnt (gribfield *, gaint, g2int, gaint);
 gaint g2sp (gribfield *);
+gaint g2sp2 (gribfield *);
+void  g2prnt (gribfield *, gaint, g2int, gaint, gaint);
 #endif

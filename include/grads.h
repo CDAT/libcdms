@@ -1,13 +1,11 @@
-/*  Copyright (C) 1988-2010 by Brian Doty and the 
-    Institute of Global Environment and Society (IGES).  
+/*  Copyright (C) 1988-2013 by the Institute of Global Environment and Society (IGES).  
     See file COPYRIGHT for more information.   */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include "gabufr.h"
-/* #include <gatypes.h>  JMA why is this causing problems? */
-#ifdef GRIB2
+#if GRIB2==1
 #include "grib2.h"
 #endif
 #if USESHP==1
@@ -104,6 +102,7 @@ struct gacmn {
   gadouble *xabval;
   gadouble *yabval;
   struct gawgds *wgds;         /* Pointer to gds output structure       */
+  gaint aaflg;                 /* Hardware anti-aliasing flag           */
   gaint hbufsz;                /* Metafile buffer size                  */
   gaint g2bufsz;               /* Grib2 cache buffer size               */
   gaint pass;                  /* Number of passes since last clear     */
@@ -154,6 +153,7 @@ struct gacmn {
   gadouble rmin2,rmax2,rint2;  /* Axis limits for 1-D plots             */
   gaint aflag,aflag2;          /* Keep 1D axis limits fixed             */
   gaint grflag,grstyl,grcolr;  /* Grid flag, linestyle, color           */
+  gaint grthck;                /* Grid thickness                        */
   gaint dignum;                /* grid value plot control (gxout=grid)  */
   gadouble digsiz;
   gaint arrflg;                /* Use already set arrow scaling         */
@@ -164,6 +164,9 @@ struct gacmn {
   gaint hemflg;                /* -1; auto  0; nhem  1; shem */
   gaint miconn;                /* Connect line graph accross missing    */
   gaint strmden;               /* Streamline density indicator  */
+  gadouble strmarrd;           /* Streamline distance between arrowheads */
+  gadouble strmarrsz;          /* Streamline arrowhead size */
+  gaint strmarrt;              /* Streamline arrowhead type */
   gaint mdlblnk,mdldig3;       /* Station model plot opts */
   char *prstr;                 /* Format string for gxout print */
   gaint prlnum;                /* Number of values per record */
@@ -181,6 +184,7 @@ struct gacmn {
   gaint rotate;                /* Rotate plot from default orientation  */
   gaint xflip, yflip;          /* Flip X or Y axes                      */
   gaint zlog;                  /* Z coordinate in log scale */
+  gaint log1d;                 /* Log scaling for 1D plots              */
   gaint coslat;                /* Lat coordinate scaled as cos lat */
   gaint mproj;                 /* Map projection -- used for X,Y plot   */
                                /*  only.  0 = no map.                   */
@@ -207,8 +211,6 @@ struct gacmn {
   gadouble strrot;             /* Draw string rotation */
   gadouble strhsz,strvsz;      /* Draw string hor. size, vert. size     */
   gaint anncol,annthk;         /* Draw title color, thickness           */
-  gaint grflg;                 /* Grey Scale flag   */
-  gaint devbck;                /* Device background */
   gaint xlcol,xlthck,ylcol,ylthck,clcol,clthck;  /* color, thickness */
   gaint xlside,ylside,ylpflg;
   gadouble xlsiz,ylsiz,clsiz,xlpos,ylpos,yllow;         /* Axis lable size */
@@ -237,22 +239,32 @@ struct gacmn {
   gaint dlgfc,dlgbc,dlgoc;   /* Current dialog attributes */
   gaint dlgpc,dlgth,dlgnu;
   gaint drvals[15];          /* Attributes for drop menus */
+  char *shpfname;            /* shapefile write file name */
+  gaint shptype;             /* shapefile output type: 1=point, 2=line */
+  gaint gtifflg;             /* geotiff data type: 1=float 2=double */
   char *gtifname;            /* geotiff write file name */
   char *tifname;             /* kml image  file name */
   char *kmlname;             /* kml text file name */
+  gaint kmlflg;              /* kml output: 1==img, 2==contours */
   char *sdfwname;            /* netcdf/hdf write file name */
   gaint sdfwtype;            /* type of sdf output: 1=classic, 2=nc4 */
   gaint sdfwpad;             /* pad the sdf output with extra dims: 1=4D, 2=5D */
   gaint sdfprec;             /* precision (8==double, 4==float, etc.) */
   gaint sdfchunk;            /* flag to indicate whether or not to chunk */
   gaint sdfzip;              /* flag to indicate whether or not to compress */
+  gaint sdfrecdim;           /* flag to indicate record dimensions */
   gaint ncwid;               /* netcdf write file id  */
   gaint xchunk;              /* size of sdfoutput file chunk in X dimension */
   gaint ychunk;              /* size of sdfoutput file chunk in Y dimension */
   gaint zchunk;              /* size of sdfoutput file chunk in Z dimension */
   gaint tchunk;              /* size of sdfoutput file chunk in T dimension */
   gaint echunk;              /* size of sdfoutput file chunk in E dimension */
-  struct gaattr *attr;       /* pointer to link list of user-specified attributes */
+  struct gaattr *attr;       /* pointer to link list of user-specified SDF attributes */
+#if USESHP==1
+  struct dbfld *dbfld;       /* pointer to link list of user-specified data base fields */
+#endif
+  gaint dblen;               /* total number of digits for formatting data base fields */
+  gaint dbprec;              /* precision digits for formatting data base fields: %len.prec */
   FILE *ffile;               /* grads.fwrite file handle */
   FILE *sfile;               /* grads.stnwrt file handle */
   char *fwname;              /* fwrite file name */
@@ -260,7 +272,6 @@ struct gacmn {
   gaint fwsqflg;             /* fwrite stream vs fortran seq */
   gaint fwappend;            /* write mode (1): append */
   gaint fwexflg;             /* fwrite exact grid dims */
-  gaint gtifflg;             /* geotiff data type: 0=image 1=float 2=double */
   gaint grdsflg;             /* Indicate whether to put grads atrib.  */
   gaint timelabflg;          /* Indicate whether to put cur time atrib.  */
   gaint stnprintflg;         /* Indicate whether to put cur time atrib.  */
@@ -330,7 +341,7 @@ struct gastat {
 
 
 /* Description of a data file.                                        */
-struct gafile {
+  struct gafile {
   struct gafile *pforw;      /* Forward pointer to next gafile block.
                                 List is anchored within gastat.       */
   gaint fseq;                /* Unique sequence number for cache detection */
@@ -543,10 +554,15 @@ struct gaattr {
 #if USESHP==1
 /* Structure that contains dBase field metadata */
 struct dbfld {
-  DBFFieldType type;
-  char name[12];
-  gaint len;
-  gaint prec; 
+  struct dbfld *next;           /* Address of next data base field */
+  DBFFieldType type;            /* string, integer, double, or logical */
+  char name[12];                /* library interface limits length to 11 charaters */
+  gaint len;                    /* for type string: width of string
+				   for type int and double: total number of digits */
+  gaint prec; 			/* for type double: used with len for format string %len.prec */
+  gaint index;                  /* index value (for identifying this field in a list of fields) */
+  gaint flag;                   /* 0==static fiels (same for all shapes), 1==dynamic (varies w/ shape) */
+  void *value;                  /* field value */
 };
 #endif
 
@@ -652,10 +668,12 @@ struct gavar {
   char varnm[128];             /* Variable description.                */
   char abbrv[16];              /* Variable abbreviation.               */
   char longnm[257];            /* netcdf/hdf var name if different     */
-  gadouble units[16];          /* Units indicator.                     
+  gadouble units[48];          /* Units indicator.                     
 				  Vals 0-7 are for variable codes:
-				  grib, non-float data, nc/hdf dims
-				  Vals  8-11 are for grib level codes  */
+				  grib, non-float data, and nc/hdf dims;
+				  Vals 8-15 are for grib level codes;
+			          Vals 16-48 are for extra grib2 codes */
+  gaint g2aflg;                /* var requires additional grib2 codes  */
   gaint offset;                /* Offset in grid elements of the start
                                   of this variable within a time group
                                   within this file.                    */
@@ -678,6 +696,7 @@ struct gavar {
   gaint isu;                   /* Variable is the u-component of a vector pair */
   gaint isdvar;                /* Variable is a valid data variable (for SDF files) */
   gaint nvardims;              /* Number of variable dimensions        */
+  gaint nh5vardims;            /* Number of variable dimensions for hdf5 */
   gaint vardimids[100];        /* Variable dimension IDs. 	       */
 #if USEHDF5==1
   hid_t h5varflg;              /* hdf5 variable has been opened */
@@ -746,7 +765,13 @@ struct gaindxb {
 #if GRIB2
 /* Structures for GRIB2 data */
 struct gag2indx {
-  gaint version;                /* Version number: 1: gaint offsets  2: off_t offsets */
+  gaint version;                /* Version number: 
+				   1: gaint offsets  
+				   2: off_t offsets 
+				   3: new header elements, including off_t flag */
+  gaint bigflg;                 /* off_t offsets in use */
+  gaint trecs;                  /* Number of records (XY grids) per time step */
+  gaint tsz,esz;                /* Sizes of T and E dimensions */
   gaint g2intnum;               /* Number of index offset values */  
   gaint *g2intpnt;              /* Pointer to index g2ints */
   off_t *g2bigpnt;              /* Pointer to record offsets when off_t offsets in use */
@@ -841,6 +866,11 @@ gaint gaqury (char *, char *, struct gacmn *);
 gaint gahelp (char *, struct gacmn *);
 gaint gaset (char *, char *, struct gacmn *);
 void set_nc_cache(size_t);
+#if USESHP==1
+SHPHandle gaopshp (char *);
+DBFHandle gaopdbf (char *);
+struct dbfld* parsedbfld (char *);
+#endif
 gaint gacoll (char *, struct gacmn *);
 gaint gadspl (char *, struct gacmn *);
 gaint gaspcl (char *, struct gacmn *);
@@ -858,7 +888,7 @@ gaint gahistory(char*, char *, struct gacmn *);
 gaint ncwrite (char *, struct gacmn *);
 gaint sdfwatt (struct gacmn*, gaint, char *, char *, char *);
 gaint sdfwdim (struct gafile *, struct gacmn *, gaint, gaint);
-gaint sdfdefdim (gaint, char *, gaint, gaint *, gaint *);
+gaint sdfdefdim (gaint, char *, gaint, gaint *, gaint *, gaint, gaint);
 
 gaint gaddes (char *, struct gafile *, gaint);
 gaint deflin (char *, struct gafile *, gaint, gaint);
@@ -1015,13 +1045,18 @@ void gaoutgds (struct gacmn *);
 void galfil (struct gacmn *);
 void lfint (gadouble, gadouble, gadouble, gadouble, gadouble *, gadouble *);
 void lfout (gadouble *, gadouble *, gadouble *, gadouble *, gaint, gaint);
-void gacntr (struct gacmn *, gaint);
+gaint gacntr (struct gacmn *, gaint, gaint);
 void gastrm (struct gacmn *);
 void gashad (struct gacmn *);
 void gavect (struct gacmn *, gaint);
 void gascat (struct gacmn *);
 void gafgrd (struct gacmn *);
 void gagtif (struct gacmn *, gaint);
+void gakml (struct gacmn *);
+void gashpwrt (struct gacmn *);
+#if USESHP==1
+struct dbfld* newdbfld (char *, DBFFieldType, gaint, gaint, gaint, char*);
+#endif
 void getcorners(struct gacmn *, struct gagrid *, gadouble *);
 void ij2ll (struct gacmn *, gadouble, gadouble, gadouble, gadouble, gadouble *, gaint);
 gaint write_kml(struct gacmn *, gadouble *);
@@ -1049,7 +1084,7 @@ void gawsym (struct gacmn *);
 void gasmrk (struct gacmn *);
 void gabarb (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gaint);
 void gapmdl (struct gacmn *);
-void gasmdl (struct gacmn *, struct garpt *, gadouble *, char *);
+gaint gasmdl (struct gacmn *, struct garpt *, gadouble *, char *);
 gadouble wndexit (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble *,
                                    gadouble *, gadouble *, gadouble *);
 void gapprf (struct gacmn *);
@@ -1062,6 +1097,12 @@ void galnx (gadouble, gadouble, gadouble *, gadouble *);
 void galny (gadouble, gadouble, gadouble *, gadouble *);
 void gaalnx (gadouble, gadouble, gadouble *, gadouble *);
 void gaalny (gadouble, gadouble, gadouble *, gadouble *);
+void galogx (gadouble, gadouble, gadouble *, gadouble *);
+void galogy (gadouble, gadouble, gadouble *, gadouble *);
+void galog2 (gadouble, gadouble, gadouble *, gadouble *);
+void gaalogx (gadouble, gadouble, gadouble *, gadouble *);
+void gaalogy (gadouble, gadouble, gadouble *, gadouble *);
+void gaalog2 (gadouble, gadouble, gadouble *, gadouble *);
 void gaclx (gadouble, gadouble, gadouble *, gadouble *);
 void gacly (gadouble, gadouble, gadouble *, gadouble *);
 void gaaclx (gadouble, gadouble, gadouble *, gadouble *);
@@ -1167,6 +1208,7 @@ void gapby (gaint, unsigned char *, gaint, gaint);
 void gapbb (gaint, unsigned char *, gaint, gaint);
 char *gafndt (char *, struct dt *, struct dt *, gadouble *, 
 	      struct gachsub *, struct gaens *, gaint, gaint, gaint *);
+void gabswp2 (void *, gaint);
 void gabswp (void *, gaint);
 void gabswp8 (void *, gaint);
 void gahswp (struct rpthdr *);
