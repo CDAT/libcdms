@@ -4,6 +4,8 @@ AC_INIT(src)
 
 PC_OS
 
+AC_DEFINE(GRADS_VERSION, "2.1.a2.oga.1", [GrADS version])
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_FC
