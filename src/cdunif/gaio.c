@@ -49,7 +49,7 @@ static gaint msgflg=1;
 static char pout[256]; 
 
 /* For STNDALN, routines included are gaopfn, gaopnc, and gaophdf */
-#ifndef STNDALN
+/* #ifndef STNDALN */
 
 /* GRIB I/O caching.  GRIB data is chached, as well as the bit
    maps, if present.  Sometimes the expanded bit map is cached. */
@@ -4864,7 +4864,7 @@ void prntwrap(char *vname, char *aname, char *str ) {
 }
 
 
-#endif  /* matches #ifndef STNDALN */
+/* #endif  /* matches #ifndef STNDALN */
 
 /* Routine to open appropriate file when using file templates */
 /* Warning -- changes time value to time with respect to this file */

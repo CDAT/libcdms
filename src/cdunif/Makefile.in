@@ -77,7 +77,8 @@ SHELL = /bin/sh
 # Do not change values below this line
 #
 LIBRARY= ../../lib/libcdms.a
-OBJS= cdunif.o cdunifint.o cdunifgen.o cdunifdrs.o cdunifgrads.o cdunifnc.o cdunifhdf.o cdunifslab.o cdunifstub.o cdunifra.o cdrra.o cdsort.o gamach.o gaio.o gaprnt.o gautil.o gaddes.o galloc.o gabufr.o gabufrtbl.o cdunifql.o @GRADS_IEEE2CRAY_OBJECT@
+OBJS= cdunif.o cdunifint.o cdunifgen.o cdunifdrs.o cdunifgrads.o cdunifnc.o cdunifhdf.o cdunifslab.o cdunifstub.o cdunifra.o cdrra.o cdsort.o gamach.o gaio.o gaprnt.o gautil.o gaddes.o galloc.o gabufr.o gabufrtbl.o cdunifql.o gatxt.o bufrstn.o @GRADS_IEEE2CRAY_OBJECT@
+
 
 all:		$(OBJS) FORCE
 		ar rv $(LIBRARY) $(OBJS)
@@ -105,6 +106,9 @@ cdunifql.o:	cdunifql.c ../../include/cdmsint_new.h ../../include/cdunifint.h
 galloc.o:	galloc.c ../../include/grads.h ../../include/gatypes.h
 gabufr.o:	gabufr.c ../../include/grads.h ../../include/gatypes.h
 gabufrtbl.o:	gabufrtbl.c ../../include/grads.h ../../include/gatypes.h
+gatxt.o:        gatxt.c ../../include/grads.h ../../include/gatypes.h
+bufrstn.o:      bufrstn.c ../../include/grads.h ../../include/gatypes.h
+
 
 ieee2cray.o:	ieee2cray.f
 		cft77 -i 64 -a static -Rb ieee2cray.f
