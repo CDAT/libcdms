@@ -431,7 +431,7 @@ AC_DEFUN([PC_FORT_DEPEND],
 		;;
 	 linux*)
 dnl                $1=$$1" -lfio -lf77math -lU77 -lm"
-                $1=$$1" -L$PGI/linux86/$PGI_VERSION/lib -lpgftnrtl -lpgc -lm"
+                $1=$$1" -lgfortran"
 		;;
 	 osf*)
 		$1=$$1" -lfor -lc -lm"
@@ -446,6 +446,7 @@ dnl                $1=$$1" -lfio -lf77math -lU77 -lm"
 		$1=$$1" -lf -lc -lm"
 		;;
 	 *)
+		$1=$$1" -lgfortran"
 		;;
     esac
 ])

@@ -5176,7 +5176,7 @@ if test "X$ENABLE_DRS" = "Xyes"; then
                 PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -lF77 -lm -lU77 -lI77 -lisam -lc"
 		;;
 	 linux*)
-                PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -L$PGI/linux86/$PGI_VERSION/lib -lpgftnrtl -lpgc -lm"
+                PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -lgfortran"
 		;;
 	 osf*)
 		PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -lfor -lc -lm"
@@ -5191,6 +5191,7 @@ if test "X$ENABLE_DRS" = "Xyes"; then
 		PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -lf -lc -lm"
 		;;
 	 *)
+		PC_FORT_EXTRA_LIBS=$PC_FORT_EXTRA_LIBS" -lgfortran"
 		;;
     esac
 
