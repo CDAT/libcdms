@@ -5393,6 +5393,7 @@ else
 $as_echo "no" >&6; }
 			DRSOPTS=
 			found=no
+            LIBS=
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
