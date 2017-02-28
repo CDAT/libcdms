@@ -94,6 +94,11 @@ struct cu_dispatch_s {
 	void (*cuseterropts_dispatch)(int erropts);
 };
 
+/* Debug Python trap for gdb */
+void Py_DebugTrap(void) {
+        int a=0;
+}
+
 
 /* Function dispatch struct */
 /* NB! The formats must appear in the same order */

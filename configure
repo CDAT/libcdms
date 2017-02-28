@@ -3012,6 +3012,10 @@ _ACEOF
 $as_echo "$OS" >&6; }
 
 
+
+$as_echo "#define GRADS_VERSION \"2.1.a2.oga.1\"" >>confdefs.h
+
+
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
