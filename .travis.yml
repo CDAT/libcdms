@@ -1,11 +1,8 @@
 os:
 #    - osx
-    - linux
+- linux
 
-sudo: required
-
-services:
-    - docker
+sudo: false
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "linux" ]; then wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh; fi
@@ -56,5 +53,4 @@ after_success:
     - test -f $PREFIX/lib/libcdms.a
     - if [ $TRAVIS_BRANCH == "master" -a $TRAVIS_PULL_REQUEST == "false" -a "$TRAVIS_OS_NAME" = "osx" ]; then bash scripts/conda_upload.sh ; fi
     - if [ $TRAVIS_BRANCH == "master" -a $TRAVIS_PULL_REQUEST == "false" -a "$TRAVIS_OS_NAME" = "linux" ]; then docker run -v `pwd`:/travis_home -e CONDA_UPLOAD_TOKEN=${CONDA_UPLOAD_TOKEN} -a STDOUT cdat/conda:conda-forge-cdms2 /travis_home/scripts/conda_upload.sh ; fi
-
 
