@@ -10,8 +10,9 @@
 #endif
 
 #else /* undef HAVE_CONFIG_H */
-
+#ifdef HAVE_MALLOC_H
 #include <malloc.h>
+#endif
 
 #endif /* HAVE_CONFIG_H */
 
