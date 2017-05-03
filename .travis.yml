@@ -1,0 +1,58 @@
+os:
+#    - osx
+    - linux
+
+sudo: required
+
+services:
+    - docker
+
+before_install:
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then wget https://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -y -q conda
+    - conda install gcc
+    - echo ""
+    - echo "Configuring conda."
+    - source /Users/travis/miniconda3/bin/activate root
+    - conda config --remove channels defaults
+    - conda config --add channels defaults
+    - conda config --add channels conda-forge
+    - conda config --set show_channel_urls true
+    - conda install hdf5 >=1.8.17
+    - conda install libnecdf >=4.4
+    - conda install jasper
+    - conda install g2clib
+    - conda install libpng >=1,6,28,<1.7
+    - conda install libtiff >4.0
+    - conda install jpeg >9
+    - conda install libdrs
+
+script:
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then conda install -c conda-forge -c uvcdat uvcdat-nox pyopenssl; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then conda install -c conda-forge -c uvcdat uvcdat pyopenssl; fi
+    - export UVCDAT_ANONYMOUS_LOG=False
+    - echo $TRAVIS_BRANCH
+    - export TRAVIS_PR_BRANCH=$TRAVIS_BRANCH
+    - echo $TRAVIS_EVENT_TYPE
+    - echo $TRAVIS_PULL_REQUEST
+    - export CFLAGS="-Wall -g -m64 -pipe -O2  -fPIC ${CFLAGS}"
+    - export CXXLAGS="${CFLAGS} ${CXXLAGS}"
+    - export CPPFLAGS="-I${PREFIX}/include ${CPPPFLAGS}"
+    - export LDFLAGS="-L${PREFIX}/lib ${LDFLAGS}"
+    - ./configure --enable-dap= --enable-drs --with-drslib=${PREFIX}/lib --with-drsinc=${PREFIX}/include --with-drsincf=${PREFIX}/include --enable-hdf=no --enable-pp=yes --enable-ql=no --cache-file=/dev/null --with-nclib=${PREFIX}/lib --with-ncinc=${PREFIX}/include --with-daplib=/lib --with-dapinc=/include --with-hdfinc=./include --with-hdflib=./lib --with-hdf5lib=${PREFIX}/lib --with-pnglib=/usr/X11/lib --with-grib2lib=${PREFIX}/lib --with-jasperlib=${PREFIX}/lib --with-grib2inc=${PREFIX}/include --enable-grib2 --prefix=${PREFIX}
+    - make 
+    - make libinstall
+    - make bininstall
+
+env:
+  global:
+    secure: Z06idl4BP01QMhrocmfuYV4CcbLmb5ZJZoXXymDr5sLIIfqdMiSL/CfDCRkIwl44vKpTN5R9AAhQV6iNMdU0NOQQrftHJyT5YV4y966FuAA1v9ev7y/cgExJFv7M/4E37WAN6YIcO7E42KZReeNKOAodorpqoT87MW6FAImZbrM=
+
+after_success:
+    - test -f $PREFIX/lib/libcdms.a
+    - if [ $TRAVIS_BRANCH == "master" -a $TRAVIS_PULL_REQUEST == "false" -a "$TRAVIS_OS_NAME" = "osx" ]; then bash scripts/conda_upload.sh ; fi
+    - if [ $TRAVIS_BRANCH == "master" -a $TRAVIS_PULL_REQUEST == "false" -a "$TRAVIS_OS_NAME" = "linux" ]; then docker run -v `pwd`:/travis_home -e CONDA_UPLOAD_TOKEN=${CONDA_UPLOAD_TOKEN} -a STDOUT cdat/conda:conda-forge-cdms2 /travis_home/scripts/conda_upload.sh ; fi
