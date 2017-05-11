@@ -345,6 +345,10 @@ CuFileType CuGetFileType(const char *controlpath){
 	  return CuNetcdf;
 	}
 
+	if( strncmp(controlpath,"https://",8) == 0) {
+	  return CuNetcdf;
+	}
+
 	if( strncmp(controlpath,"gridftp:",8) == 0) {
 	  return CuNetcdf;
 	}
