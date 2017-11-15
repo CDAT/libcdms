@@ -193,6 +193,13 @@ cdParseRelunits(cdCalenType timetype, char* relunits, cdUnitTime* unit, cdCompTi
 
 	cdChar2Comp(timetype, basetime, base_comptime);
 
+    if ((base_comptime->year == CD_NULL_YEAR)
+            && (base_comptime->month == CD_NULL_MONTH)
+            && (base_comptime->day == CD_NULL_DAY)
+            && (base_comptime->hour == CD_NULL_HOUR)) {
+        return 1;
+    }
+
 	return 0;
 }
 
