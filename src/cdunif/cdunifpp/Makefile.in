@@ -45,7 +45,7 @@ UNWGDOS_HDRS=../../../include/cdunifpp/crayio.h \
 # EXTRAHDR=-I../../../include/cdunifpp
 # set to blank if you don't want to rename symbols in unpacking routines
 
-CC = @CC@
+CC = @CC@ -fPIC
 CFLAGS = -I@srcdir@/../../../include/cdunifpp -I@NCINC@ @CFLAGS@ -I@srcdir@/../../../include $(DEBUG)
 CPPFLAGS = @CPPFLAGS@ @PPOPTS@ -Uhdf
 LIBRARY = ../../../lib/libcdms.a
