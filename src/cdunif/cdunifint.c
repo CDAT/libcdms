@@ -374,9 +374,12 @@ CuFileType CuGetFileType(const char *controlpath){
 #if defined(__alpha) || defined(__ia64) || defined(__x86_64__)
 			magic &= 0x00000000ffffffff;
 #endif
-/*  			printf("magic is: magic, NC4, NC64, NC: %i, %i, %i\n",magic,NETCDF4_MAGIC_COOKIE,NETCDF4_64BIT_MAGIC_COOKIE,NETCDF_MAGIC_COOKIE ); */
-/* 			printf("hex: %x, %x\n",magic,NETCDF4_MAGIC_COOKIE); */
-			if((magic==NETCDF_MAGIC_COOKIE)|| (magic == NETCDF4_MAGIC_COOKIE) || (magic == NETCDF4_64BIT_MAGIC_COOKIE)|| (magic == NETCDF4_64BIT_MAGIC_COOKIE2)){
+/*			printf("magic is: magic, NC5, NC4, NC64, NC: %i, %i, %i, %i\n",magic,NETCDF5_MAGIC_COOKIE, NETCDF4_MAGIC_COOKIE, NETCDF4_64BIT_MAGIC_COOKIE, NETCDF_MAGIC_COOKIE );
+			printf("hex: %x, %x \n",magic, NETCDF5_MAGIC_COOKIE); */
+			if((magic==NETCDF_MAGIC_COOKIE) || (magic == NETCDF5_MAGIC_COOKIE) ||
+			        (magic == NETCDF4_MAGIC_COOKIE) ||
+			        (magic == NETCDF4_64BIT_MAGIC_COOKIE)||
+			        (magic == NETCDF4_64BIT_MAGIC_COOKIE2)){
 				fclose(fd);
 				return CuNetcdf;
 			}
