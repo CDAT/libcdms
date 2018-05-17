@@ -2,7 +2,7 @@ version: 2
 
 checkout:
   post:
-    - ./scripts/checkout_merge_commit.sh
+    - ./ci-support/checkout_merge_commit.sh
         
 aliases:
 
@@ -21,50 +21,7 @@ aliases:
        conda config --set always_yes yes --set changeps1 no
        conda update -y -q conda
        conda config --set anaconda_upload no
-       conda create -q -n py2 -c conda-forge hdf5 libnetcdf lapack clapack curl ossuuid gcc "python<3" "numpy>1.14"
-       conda create -q -n py3 -c conda-forge hdf5 libnetcdf lapack clapack curl ossuuid gcc "python>3" "numpy>1.14"
-       source activate py2
        conda list
-
-  - &run_libcdms_tests
-    name: run_libcdms_tests
-    command: |
-       export PATH=$WORKDIR/miniconda/bin:$PATH
-       echo "CIRCLE CI BRANCH: "$CIRCLE_BRANCH
-       echo "CI_PULL_REQUESTS: "$CI_PULL_REQUESTS
-       echo "CI_PULL_REQUEST: "$CI_PULL_REQUEST
-       export CFLAGS="-Wall -m64 -pipe -O2  -fPIC ${CFLAGS}"
-       export CXXFLAGS="${CFLAGS} ${CXXFLAGS}"
-       export LFLAGS="-fPIC ${LFLAGS}"
-       # somehow looks for fortran but doesn't seem to need it it's pure C
-       # looking for fortran makes mac fail
-       source activate base
-       export FC="" 
-       pwd
-       ls
-       echo "xxx running configure py2"
-       source activate py2
-       export PREFIX=$CONDA_PREFIX
-       export CPPFLAGS="-I${PREFIX}/include ${CPPFLAGS}"
-       export LDFLAGS="-L${PREFIX}/lib ${LDFLAGS}"
-       ./configure --prefix=${PREFIX}
-       python setup.py install
-       echo "xxx running make"
-       make
-       echo "xxx running make install"
-       make install
-       echo "xxx running configure py3"
-       source activate py3
-       export PREFIX=$CONDA_PREFIX
-       export CPPFLAGS="-I${PREFIX}/include ${CPPFLAGS}"
-       export LDFLAGS="-L${PREFIX}/lib ${LDFLAGS}"
-       ./configure --prefix=${PREFIX}
-       python setup.py install
-       echo "xxx running make"
-       make
-       echo "xxx running make install"
-       make install
-       echo "py3 test command exit result:",$RESULT
 
   - &upload_libcdms
     name: upload_libcdms
@@ -79,7 +36,6 @@ aliases:
        fi
 
 
-
 jobs:
   macos_libcdms:
     macos:
@@ -90,19 +46,17 @@ jobs:
       - checkout
       - run: *setup_miniconda
       - run: *create_conda_env
-      - run: *run_libcdms_tests
       - run: *upload_libcdms
 
   linux_libcdms:
     machine:
       image: circleci/classic:latest
     environment:
-      WORKDIR: "workspace/test_linux_cdms"
+      WORKDIR: "workspace/test_linux_libcdms"
     steps:
       - checkout
       - run: *setup_miniconda
       - run: *create_conda_env
-      - run: *run_libcdms_tests
       - run: *upload_libcdms
       - store_artifacts:
           path: tests_html

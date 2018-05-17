@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-PKG_NAME=libcf
+PKG_NAME=libcdms
 USER=cdat
 export VERSION="3.0"
 echo "Trying to upload to conda"
@@ -29,6 +29,5 @@ rm -rf uvcdat
 export BRANCH=${CIRCLE_BRANCH}
 python ./prep_for_build.py  -b ${BRANCH}
 
-conda build $PKG_NAME -c conda-forge -c cdat -c uvcdat --python=27
-conda build $PKG_NAME -c cdat/label/nightly -c conda-forge -c cdat -c uvcdat --python=3.6
-anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l $LABEL $CONDA_BLD_PATH/$OS/$PKG_NAME-$VERSION.`date +%Y*`0.tar.bz2 --force
+conda build ${PKG_NAME} -c conda-forge 
+anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l $LABEL $CONDA_BLD_PATH/$OS/${PKG_NAME}-$VERSION.`date +%Y*`0.tar.bz2 --force
