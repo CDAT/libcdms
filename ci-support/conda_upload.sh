@@ -10,6 +10,7 @@ echo "Making sure conda-build is installed"
 conda install conda-build
 echo "Updating conda"
 conda update -y -q conda
+
 if [ `uname` == "Linux" ]; then
     OS=linux-64
     echo "Linux OS"
