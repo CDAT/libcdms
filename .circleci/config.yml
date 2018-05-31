@@ -31,7 +31,7 @@ aliases:
        if [ $CIRCLE_BRANCH == "master" ]; then bash ./ci-support/conda_upload.sh ; fi
        if [ $CIRCLE_BRANCH != "master" ]; then
            export LABEL="unstable";
-           conda install -n root conda-build anaconda-client;
+           conda install -n root "conda-build<3.10" anaconda-client;
            bash ./ci-support/conda_upload.sh;
        fi
 
@@ -58,12 +58,6 @@ jobs:
       - run: *setup_miniconda
       - run: *create_conda_env
       - run: *upload_libcdms
-      - store_artifacts:
-          path: tests_html
-          destination: tests_html
-      - store_artifacts:
-          path: tests_png
-          destination: tests_png
 
 workflows:
   version: 2 
