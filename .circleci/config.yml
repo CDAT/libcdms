@@ -1,0 +1,70 @@
+version: 2
+
+checkout:
+  post:
+    - ./ci-support/checkout_merge_commit.sh
+        
+aliases:
+
+  - &setup_miniconda
+    name: setup_miniconda
+    command: |
+      mkdir -p workspace
+      git clone -b validateNightly git@github.com:CDAT/cdat workspace/cdat
+      ls workspace/cdat
+      python workspace/cdat/scripts/install_miniconda.py -w $WORKDIR -p 'py3'
+      
+  - &create_conda_env
+    name: create_conda_env
+    command: |
+       export PATH=$HOME/project/$WORKDIR/miniconda/bin:$PATH
+       conda config --set always_yes yes --set changeps1 no
+       conda update -y -q conda
+       conda config --set anaconda_upload no
+       conda list
+
+  - &upload_libcdms
+    name: upload_libcdms
+    command: |
+       export PATH=$HOME/project/$WORKDIR/miniconda/bin:$PATH
+       if [ $CIRCLE_BRANCH == "master" ]; then conda install -n root conda-build anaconda-client ; fi
+       if [ $CIRCLE_BRANCH == "master" ]; then bash ./ci-support/conda_upload.sh ; fi
+       if [ $CIRCLE_BRANCH != "master" ]; then
+           export LABEL="unstable";
+           conda install -n root "conda-build<3.10" anaconda-client;
+           bash ./ci-support/conda_upload.sh;
+       fi
+
+
+jobs:
+  macos_libcdms:
+    macos:
+      xcode: "9.2.0"
+    environment:
+      WORKDIR: "workspace/test_macos_libcdms"
+    steps:
+      - checkout
+      - run: *setup_miniconda
+      - run: *create_conda_env
+      - run: *upload_libcdms
+
+  linux_libcdms:
+    machine:
+      image: circleci/classic:latest
+    environment:
+      WORKDIR: "workspace/test_linux_libcdms"
+    steps:
+      - checkout
+      - run: *setup_miniconda
+      - run: *create_conda_env
+      - run: *upload_libcdms
+
+workflows:
+  version: 2 
+  libcdms:
+      jobs:
+        - macos_libcdms
+        - linux_libcdms
+
+
+       
