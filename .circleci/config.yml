@@ -32,7 +32,6 @@ aliases:
        if [ $CIRCLE_BRANCH == "master" ]; then bash ./ci-support/conda_upload.sh ; fi
        if [ $CIRCLE_BRANCH != "master" ]; then
            export LABEL="unstable";
-#           conda install -n root "conda-build<3.10" anaconda-client;
            conda install -n root "conda-build" anaconda-client;
            bash ./ci-support/conda_upload.sh;
        fi
