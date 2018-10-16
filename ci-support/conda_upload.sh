@@ -27,7 +27,13 @@ echo "Cloning recipes"
 git clone git://github.com/CDAT/conda-recipes
 cd conda-recipes
 # uvcdat creates issues for build -c uvcdat confises package and channel
-rm -rf uvcdat
+if [[ -d uvcdat ]]; then
+    rm -rf uvcdat
+fi
+if [[ -d libcdms ]]; then
+    rm -rf libcdms
+fi
+ln -s ../recipe libcdms
 export BRANCH=${CIRCLE_BRANCH}
 python ./prep_for_build.py  -b ${BRANCH}
 
