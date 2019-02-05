@@ -68,7 +68,7 @@ LIBRARY		= libcdms.a
 SHLIBRARY	= libcdms.so
 
 # all:		cddrs cdunif db_util cddrstest cduniftest 
-all:		cddrs cdunif db_util cduniftest
+all:		cddrs cdunif db_util cduniftest libcdms.so
 
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 
