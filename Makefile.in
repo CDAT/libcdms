@@ -65,15 +65,15 @@ SHELL = /bin/sh
 # Do not change values below this line
 #
 LIBRARY		= libcdms.a
-#SHLIBRARY	= libcdms.so
+SHLIBRARY	= libcdms.so
 
 # all:		cddrs cdunif db_util cddrstest cduniftest 
 all:		cddrs cdunif db_util cduniftest
 
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 
-#libcdms.so:
-#	$(CC) -shared lib/$(LIBRARY) -o lib/$(SHLIBRARY)
+libcdms.so:
+	$(CC) -shared lib/$(LIBRARY) -o lib/$(SHLIBRARY)
 
 cddrs:
 	cd src/cddrs; $(MAKE)
@@ -129,7 +129,7 @@ bininstall:
 
 libinstall:	
 	$(INSTALL_PROGRAM) -m 644 lib/$(LIBRARY) $(LIBDIR)/$(LIBRARY)
-#	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.inc $(INCLUDEDIR)/cdms.inc
@@ -147,6 +147,7 @@ maninstall:
 
 distinstall:
 	$(INSTALL_PROGRAM) -m 644 $(LIBRARY) $(LIBDIR)/$(LIBRARY)
+	$(INSTALL_PROGRAM) -m 644 $(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 cdms.inc $(INCLUDEDIR)/cdms.inc
