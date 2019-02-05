@@ -43,7 +43,7 @@ PARMDIR=$(prefix)/lib/lats
 VPATH=@srcdir@
 SRCDIR=@srcdir@
 
-CC = @CC@
+CC = @CC@ -fPIC
 CXX = g++
 CFLAGS = -I@srcdir@/../../../include @CFLAGS@ $(DEBUG) -Dgrads
 CXXFLAGS = $(CFLAGS)
