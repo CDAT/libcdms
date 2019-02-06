@@ -29,6 +29,7 @@ export LDSHARED="$CC -shared -pthread"
     --with-grib2inc=${PREFIX}/include \
     --enable-grib2 \
     --prefix=${PREFIX}
+
 make 
 make libinstall
 make bininstall
