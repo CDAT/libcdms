@@ -77,7 +77,7 @@ libcdms.so:
 ifeq ($(UNAME_S),Linux)
 	$(CC) -shared -Wl,--whole-archive -o lib/${SHLIBRARY}.so lib/${LIBRARY} -Wl,--no-whole-archive
 else
-	$(CC) -shared -Wl,-all_load -o lib/${SHLIBRARY}.dylib lib/${LIBRARY} -Wl,-noall_load
+	$(CC) -shared -o lib/${SHLIBRARY}.dylib -Wl,-force_load lib/${LIBRARY}  @NCOPTS@ @HDFOPTS@ @DRSOPTS@  @GRIB2LIB@ @LIBS@
 endif
 
 
