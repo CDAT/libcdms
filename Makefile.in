@@ -73,7 +73,14 @@ all:		cddrs cdunif db_util libcdms.so cduniftest
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 
 libcdms.so:
-	$(CC) -shared -Wl,--whole-archive -o lib/$(SHLIBRARY) lib/${LIBRARY} -Wl,--no-whole-archive
+ifeq ($(UNAME_S),Linux)
+    SHLIBRARY = libcdms.so \
+    $(CC) -shared -Wl,--whole-archive -o lib/${SHLIBRARY} lib/${LIBRARY} -Wl,--no-whole-archive
+else
+    SHLIBRARY = libcdms.dylib \
+    $(CC) -shared -Wl,-all_load -o lib/${SHLIBRARY} lib${LIBRARY} -Wl,-noall_load
+endif
+
 
 cddrs:
 	cd src/cddrs; $(MAKE)
