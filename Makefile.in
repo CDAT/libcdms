@@ -135,7 +135,11 @@ bininstall:
 
 libinstall:	
 	$(INSTALL_PROGRAM) -m 644 lib/$(LIBRARY) $(LIBDIR)/$(LIBRARY)
-	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
+ifeq ($(UNAME_S),Linux)
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).so $(LIBDIR)/$(SHLIBRARY).so
+else
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).dylib $(LIBDIR)/$(SHLIBRARY).dylib
+endif
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.inc $(INCLUDEDIR)/cdms.inc
@@ -153,7 +157,11 @@ maninstall:
 
 distinstall:
 	$(INSTALL_PROGRAM) -m 644 $(LIBRARY) $(LIBDIR)/$(LIBRARY)
-	$(INSTALL_PROGRAM) -m 644 $(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
+ifeq ($(UNAME_S),Linux)
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).so $(LIBDIR)/$(SHLIBRARY).so
+else
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).dylib $(LIBDIR)/$(SHLIBRARY).dylib
+endif
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 cdms.inc $(INCLUDEDIR)/cdms.inc
