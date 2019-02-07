@@ -48,7 +48,7 @@ SRCDIR=@srcdir@
 VPATH=@srcdir@
 
 # Set the compiler flag for the 64-bit Opteron platform
-CC = @CC@
+CC = @CC@ -fPIC
 ARCH=$(shell uname -m)
 ifeq ($(ARCH),ia64)
    CC = @CC@ -fPIC -D__ia64

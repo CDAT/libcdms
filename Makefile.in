@@ -61,19 +61,26 @@ RANLIB = @RANLIB@
 
 # Shell to run make subcommands
 SHELL = /bin/sh
+UNAME_S := $(shell uname -s)
 
 # Do not change values below this line
 #
 LIBRARY		= libcdms.a
-#SHLIBRARY	= libcdms.so
+SHLIBRARY   = libcdms
 
 # all:		cddrs cdunif db_util cddrstest cduniftest 
-all:		cddrs cdunif db_util cduniftest
+all:		cddrs cdunif db_util libcdms.so cduniftest 
 
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 
-#libcdms.so:
-#	$(CC) -shared lib/$(LIBRARY) -o lib/$(SHLIBRARY)
+libcdms.so:
+ifeq ($(UNAME_S),Linux)
+	$(CC) -shared -Wl,--whole-archive -o lib/${SHLIBRARY}.so lib/${LIBRARY} -Wl,--no-whole-archive
+else
+	$(CC) -shared -o $(LIBDIR)/${SHLIBRARY}.dylib -Wl,-force_load lib/${LIBRARY}  @NCOPTS@ @HDFOPTS@ @DRSOPTS@  @GRIB2LIB@ @LIBS@
+	cp $(LIBDIR)/${SHLIBRARY}.dylib lib
+endif
+
 
 cddrs:
 	cd src/cddrs; $(MAKE)
@@ -129,7 +136,11 @@ bininstall:
 
 libinstall:	
 	$(INSTALL_PROGRAM) -m 644 lib/$(LIBRARY) $(LIBDIR)/$(LIBRARY)
-#	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY) $(LIBDIR)/$(SHLIBRARY)
+ifeq ($(UNAME_S),Linux)
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).so $(LIBDIR)/$(SHLIBRARY).so
+else
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).dylib $(LIBDIR)/$(SHLIBRARY).dylib
+endif
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 ${SRCDIR}/include/cdms.inc $(INCLUDEDIR)/cdms.inc
@@ -147,6 +158,11 @@ maninstall:
 
 distinstall:
 	$(INSTALL_PROGRAM) -m 644 $(LIBRARY) $(LIBDIR)/$(LIBRARY)
+ifeq ($(UNAME_S),Linux)
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).so $(LIBDIR)/$(SHLIBRARY).so
+else
+	$(INSTALL_PROGRAM) -m 644 lib/$(SHLIBRARY).dylib $(LIBDIR)/$(SHLIBRARY).dylib
+endif
 	(cd $(LIBDIR); $(RANLIB) $(LIBRARY))
 	$(INSTALL_PROGRAM) -m 644 cdms.h $(INCLUDEDIR)/cdms.h
 	$(INSTALL_PROGRAM) -m 644 cdms.inc $(INCLUDEDIR)/cdms.inc
@@ -212,7 +228,7 @@ clean:
 	rm -f *.~*~
 
 distclean: testclean
-	rm -f lib/libcdms.a
+	rm -f lib/libcdms.*
 	cd src/cddrs; $(MAKE) distclean
 	cd src/cdunif; $(MAKE) distclean
 	cd src/db_util; $(MAKE) distclean

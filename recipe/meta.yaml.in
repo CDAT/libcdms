@@ -1,5 +1,4 @@
 {% set name = "libcdms" %}
-{% set version = "3.0.1" %}
 
 package:
   name: {{ name|lower }}
@@ -9,12 +8,8 @@ source:
     git_rev: @UVCDAT_BRANCH@
     git_url: git://github.com/CDAT/libcdms.git
 
-#    fn: {{ name }}-{{ version }}.tar.gz
-#    url: https://github.com/CDAT/libcdms/archive/v3.0.1.tar.gz
-#    sha256: 9e62f77562f667db559466092cb0d908abf67a3216f7faaf152348a72f46786e
-
 build:
-  number: 0
+  number: @BUILD_NUMBER@
   skip: True  # [win] 
 
 requirements:
@@ -22,20 +17,20 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('fortran') }}
   host:
-    - libnetcdf >4.5
+    - libnetcdf 
     - jasper
     - g2clib
-    - libpng >=1.6.28,<1.7
-    - libtiff 4.0.*
-    - jpeg 9*
+    - libpng 
+    - libtiff 
+    - jpeg 
     - libdrs
   run:
-    - libnetcdf >4.5
+    - libnetcdf
     - jasper
     - g2clib
-    - libpng >=1.6.28,<1.7
-    - libtiff 4.0.*
-    - jpeg 9*
+    - libpng 
+    - libtiff 
+    - jpeg
     - libdrs
 
 test:

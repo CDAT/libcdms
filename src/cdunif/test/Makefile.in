@@ -43,7 +43,7 @@ PARMDIR=$(prefix)/lib/lats
 VPATH=@srcdir@
 SRCDIR=@srcdir@
 
-CC = @CC@
+CC = @CC@ -fPIC
 CXX = g++
 CFLAGS = -I@srcdir@/../../../include @CFLAGS@ $(DEBUG) -Dgrads
 CXXFLAGS = $(CFLAGS)
@@ -55,8 +55,7 @@ FC = @FC@
 FFLAGS = -I../../include @FFLAGS@ $(DEBUG)
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
-LDFLAGS = -L/usr/local/HDF5/lib -L../../../lib -lcdms @NCOPTS@ @HDFOPTS@ @DRSOPTS@ @LIBS@ -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lhdf5_hl -lgrib2c -lz -lpng -ljasper
-LDFLAGS = -L../../../lib -lcdms @GRIB2LIB@ @NCOPTS@ @HDFOPTS@ @DRSOPTS@ @LIBS@
+LDFLAGS = -L../../../lib  @NCOPTS@ @HDFOPTS@ @DRSOPTS@  -lcdms @GRIB2LIB@ @LIBS@
 OS = @OS@
 RANLIB = @RANLIB@
 

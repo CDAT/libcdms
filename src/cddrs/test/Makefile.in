@@ -39,7 +39,7 @@ LIBDIR=$(exec_prefix)/lib
 MANDIR=$(prefix)/man
 PARMDIR=$(prefix)/lib/lats
 
-CC = @CC@
+CC = @CC@ -fPIC
 CFLAGS = $(DEBUG)
 CPPFLAGS = -I../../../include @CPPFLAGS@ @CFLAGS@ -DNO_DECLARE -Dgrads
 DEBUG = -O
