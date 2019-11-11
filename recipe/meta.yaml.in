@@ -17,19 +17,21 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('fortran') }}
   host:
-    - libnetcdf 
-    - jasper
-    - g2clib
-    - libpng 
-    - libtiff 
-    - jpeg 
-    - libdrs
-  run:
+    - hdf5
     - libnetcdf
     - jasper
     - g2clib
-    - libpng 
-    - libtiff 
+    - libpng
+    - libtiff
+    - jpeg
+    - libdrs
+  run:
+    - hdf5
+    - libnetcdf
+    - jasper
+    - g2clib
+    - libpng
+    - libtiff
     - jpeg
     - libdrs
 
@@ -52,3 +54,6 @@ extra:
   recipe-maintainers:
     - dnadeau4
     - doutriaux1
+    - muryanto1
+    - downiec
+    - jasonb5

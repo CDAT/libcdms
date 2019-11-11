@@ -23,31 +23,43 @@ aliases:
        conda config --set anaconda_upload no
        conda list
 
-  - &upload_libcdms
-    name: upload_libcdms
+  - &conda_build_upload
+    name: conda_build_upload
+    environment:
+       CHANNELS: "-c cdat/label/nightly -c conda-forge -c cdat"
     command: |
+       #if [[ $CIRCLE_BRANCH != 'master' ]]; then
+       #   exit 0
+       #fi
        export PATH=$HOME/project/$WORKDIR/miniconda/bin:$PATH
-       export LABEL="nightly";
-       if [ $CIRCLE_BRANCH == "master" ]; then conda install -n root conda-build anaconda-client ; fi
-       if [ $CIRCLE_BRANCH == "master" ]; then bash ./ci-support/conda_upload.sh ; fi
-       if [ $CIRCLE_BRANCH != "master" ]; then
-           export LABEL="unstable";
-           conda install -n root "conda-build" anaconda-client;
-           bash ./ci-support/conda_upload.sh;
-       fi
+       source activate $PY_VER
+       export VERSION="3.1.3"
+       export LABEL="linatest";
+       export PKG_NAME="libcdms";
+       # REVISIT -- should upload only from 'master'
+       export CWD=`pwd`
+       echo "xxx cwd: $CWD"
+       git status
+       git clone -b sync_recipe https://github.com/CDAT/conda-recipes.git $WORKDIR/conda-recipes
+       CONDA_RECIPES_REPO=$CWD/$WORKDIR/conda-recipes
+       echo "CONDA_RECIPES_REPO: $CONDA_RECIPES_REPO"
+       python $CONDA_RECIPES_REPO/prepare_recipe.py -l $VERSION
+       cat recipe/meta.yaml
+       echo "bash $CONDA_RECIPES_REPO/conda_build_upload.sh $PKG_NAME $CWD/$WORKDIR $LABEL"
+       bash $CONDA_RECIPES_REPO/conda_build_upload.sh $PKG_NAME $CWD/$WORKDIR $LABEL
 
 
 jobs:
   macos_libcdms:
     macos:
-      xcode: "9.2.0"
+      xcode: "11.1.0"
     environment:
       WORKDIR: "workspace/test_macos_libcdms"
     steps:
       - checkout
       - run: *setup_miniconda
       - run: *create_conda_env
-      - run: *upload_libcdms
+      - run: *conda_build_upload
 
   linux_libcdms:
     machine:
@@ -58,7 +70,7 @@ jobs:
       - checkout
       - run: *setup_miniconda
       - run: *create_conda_env
-      - run: *upload_libcdms
+      - run: *conda_build_upload
 
 workflows:
   version: 2 
