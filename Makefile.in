@@ -74,7 +74,9 @@ all:		cddrs cdunif db_util libcdms.so cduniftest
 debug:		cddrs_debug cdunif_debug db_util_debug cddrstest_debug cduniftest_debug 
 
 libcdms.so:
-ifeq ($(UNAME_S),Linux)
+ifeq ($(target_platform),osx-arm64)
+	$(CC) -shared -Wl,-all_load -o lib/${SHLIBRARY}.so lib/${LIBRARY} -Wl,-noall_load
+else ifeq ($(UNAME_S),Linux)
 	$(CC) -shared -Wl,--whole-archive -o lib/${SHLIBRARY}.so lib/${LIBRARY} -Wl,--no-whole-archive
 else
 	$(CC) -shared -o $(LIBDIR)/${SHLIBRARY}.dylib -Wl,-force_load lib/${LIBRARY}  @NCOPTS@ @HDFOPTS@ @DRSOPTS@  @GRIB2LIB@ @LIBS@
