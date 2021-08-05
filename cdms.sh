@@ -46,9 +46,7 @@ if (test "${CDMSARCH}" = "ia64") then
   export CFLAGS="$CFLAGS -Bshareable -fPIC -D__ia64"
   #export CFLAGS="$CFLAGS -fpic -D__alpha"
 fi
-if (test "${CDMSARCH}" = "x86_64") then
-  export CC="gcc -fPIC -D__x86_64__"
-fi
+export CC="gcc -fPIC"
 target="cddrs cdunif db_util cduniftest"
 if (test $# -eq 0) then 
     echo ${msg};

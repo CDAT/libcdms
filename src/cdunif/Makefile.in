@@ -49,12 +49,7 @@ SRCDIR=@srcdir@
 VPATH=@srcdir@
 
 # Set the compiler flag for the 64-bit Opteron platform
-ARCH=$(shell uname -m)
-ifeq ($(ARCH),x86_64)
-   CC = @CC@ -fPIC -D__x86_64__
-else
-   CC = @CC@ -fPIC
-endif
+CC = @CC@ -fPIC
 ifneq (@GRIB2INC@,)
  CFLAGS = -I@srcdir@/../../include -I"@NCINC@" -I@HDFINC@ -I@DRSINC@ @CFLAGS@ $(DEBUG) -Dgrads -I@GRIB2INC@ @GRIB2OPTS@
 else
