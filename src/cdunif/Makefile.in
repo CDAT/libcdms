@@ -76,7 +76,7 @@ OBJS= cdunif.o cdunifint.o cdunifgen.o cdunifdrs.o cdunifgrads.o cdunifnc.o cdun
 
 
 all:		$(OBJS) FORCE
-		ar rv $(LIBRARY) $(OBJS)
+		$(AR) rv $(LIBRARY) $(OBJS)
 		cd cdunifpp; $(MAKE) DEBUG=$(DEBUG)
 		$(RANLIB) $(LIBRARY)
 

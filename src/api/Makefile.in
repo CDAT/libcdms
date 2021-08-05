@@ -72,12 +72,12 @@ OBJS		= cdmsslab.o
 all:		$(LIBRARY)
 
 $(LIBRARY):	$(OBJS) FORCE
-		ar rv $(LIBRARY) $(OBJS)
+		$(AR) rv $(LIBRARY) $(OBJS)
 		$(RANLIB) $(LIBRARY)
 
 EXTENDOBJS	= cdmyacc.o cdmlex.o cdmsint.o cdmsdset.o cdms.o cdmsatt.o
 extendlibrary:	$(EXTENDOBJS)
-		ar rv $(LIBRARY) $?
+		$(AR) rv $(LIBRARY) $?
 		$(RANLIB) $(LIBRARY)
 
 cdmlex.o:   cdmlex.c cdml.h ../../include/cdmsint.h ../../include/cdms.h

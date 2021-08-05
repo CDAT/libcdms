@@ -51,7 +51,7 @@ CPPFLAGS = @CPPFLAGS@ @PPOPTS@ -Uhdf
 LIBRARY = ../../../lib/libcdms.a
 
 all: $(OBJS)
-	ar rv $(LIBRARY) $(OBJS)
+	$(AR) rv $(LIBRARY) $(OBJS)
 # (ranlib called by higher-level makefile)
 
 %.o: %.c $(HEADERS)

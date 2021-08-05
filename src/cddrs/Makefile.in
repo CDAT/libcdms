@@ -62,7 +62,7 @@ LIBRARY = ../../lib/libcdms.a
 OBJS = cddrs.o
 
 all:		$(OBJS) FORCE
-		ar rv $(LIBRARY) $(OBJS)
+		$(AR) rv $(LIBRARY) $(OBJS)
 		$(RANLIB) $(LIBRARY)
 
 cddrs.o:	cddrs.c ../../include/cdunifint.h ../../include/cdunif.h ../../include/cddrsint.h ../../include/cddrs.h

@@ -62,7 +62,7 @@ OBJS		= cdTimeConv.o timeConv.o timeArith.o reg_trfm.o cdRegTrfm.o \
 		  cdUtil.o
 
 all:		$(OBJS) FORCE
-		ar rv $(LIBRARY) $(OBJS)
+		$(AR) rv $(LIBRARY) $(OBJS)
 		$(RANLIB) $(LIBRARY)
 
 cdTimeConv.o:	cdTimeConv.c ../../include/cdmsint.h ../../include/cdms.h ../../include/cdunif.h
